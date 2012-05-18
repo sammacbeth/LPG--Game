@@ -62,6 +62,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				.addParticipantGlobalEnvironmentService(LPGService.class)
 				.setStorage(RuleStorage.class));
 		modules.add(new RuleModule().addClasspathDrlFile("LPGDash.drl")
+				.addClasspathDrlFile("RationAllocation.drl")
 				.addStateTranslator(SimParticipantsTranslator.class));
 		modules.add(NetworkModule.noNetworkModule());
 		return modules;

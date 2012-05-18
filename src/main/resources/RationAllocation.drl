@@ -1,0 +1,32 @@
+package uk.ac.imperial.lpgdash
+
+import java.util.List
+
+import uk.ac.imperial.lpgdash.ProvisionPool
+import uk.ac.imperial.lpgdash.actions.*
+import uk.ac.imperial.lpgdash.facts.*
+
+global org.apache.log4j.Logger logger
+
+rule "Allocate resources"
+	no-loop
+	when
+		$c : Cluster( )
+		$pool : ProvisionPool( cluster == $c )
+		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+	then
+		double allocation = $pool.getQuantity() / $poolMembers.size();
+		for( Object p : $poolMembers ) {
+			insert( new Allocate( (Player) p, allocation ) );
+		}
+		modify( $pool ) {
+			setQuantity(0);
+		}
+end
+
+rule "Log allocation"
+	when
+		$a : Allocate( )
+	then
+		logger.info( $a );
+end

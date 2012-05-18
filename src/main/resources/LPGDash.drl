@@ -25,6 +25,10 @@ declare Generate
 	@role( event )
 end
 
+declare Allocate
+	@role( event )
+end
+
 declare ProvisionPool
 	cluster: Cluster @key
 	quantity: double
