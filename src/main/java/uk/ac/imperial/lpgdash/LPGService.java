@@ -38,7 +38,7 @@ public class LPGService extends EnvironmentService {
 		this.session = session;
 		eb.subscribe(this);
 	}
-	
+
 	@EventListener
 	public void onIncrementTime(EndOfTimeCycle e) {
 		if (round == RoundType.DEMAND)
@@ -85,6 +85,10 @@ public class LPGService extends EnvironmentService {
 	}
 
 	public double getR(UUID player) {
+		return 0;
+	}
+
+	public double getRPrime(UUID player) {
 		return 0;
 	}
 

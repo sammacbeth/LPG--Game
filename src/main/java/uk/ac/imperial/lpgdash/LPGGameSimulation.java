@@ -34,7 +34,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	private StatefulKnowledgeSession session;
 
 	private Set<Player> players = new HashSet<Player>();
-	private EnvironmentServiceProvider serviceProvider;
 	private LPGService game;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
@@ -48,7 +47,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 
 	@Inject
 	public void setServiceProvider(EnvironmentServiceProvider serviceProvider) {
-		this.serviceProvider = serviceProvider;
 		try {
 			this.game = serviceProvider.getEnvironmentService(LPGService.class);
 		} catch (UnavailableServiceException e) {

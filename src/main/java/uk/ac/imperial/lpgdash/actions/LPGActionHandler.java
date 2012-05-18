@@ -67,7 +67,7 @@ public class LPGActionHandler implements ActionHandler {
 			((Appropriate) action).player = p;
 		}
 		session.insert(action);
-		logger.info("Handling: " + action);
+		logger.debug("Handling: " + action);
 		return null;
 	}
 }
