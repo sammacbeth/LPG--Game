@@ -1,0 +1,74 @@
+#created on: 17-May-2012
+package uk.ac.imperial.lpgdash
+
+#list any import classes here.
+import java.util.List
+import java.util.ArrayList
+import java.lang.Number
+import java.lang.Double
+import uk.ac.imperial.presage2.core.Action
+import uk.ac.imperial.presage2.rules.facts.Agent
+import uk.ac.imperial.lpgdash.actions.*
+import uk.ac.imperial.lpgdash.facts.*
+
+global org.apache.log4j.Logger logger
+
+declare Round
+	@role( event )
+end
+
+declare Provision
+	@role( event )
+end
+
+declare Generate
+	@role( event )
+end
+
+declare ProvisionPool
+	cluster: Cluster @key
+	quantity: double
+end
+
+declare Processed
+	act: Object @key
+end
+
+rule "Init Provision Pool"
+	when
+		$r : Round( )
+		$c : Cluster( )
+		not( Round( this after $r ) )
+		not( ProvisionPool( cluster == $c ) )
+	then
+		insert(new ProvisionPool( $c, 0 ) );
+end
+
+rule "Accumulate Provisions"
+	salience 10
+    when
+    	$r : Round( )
+    	$c : Cluster( )
+        $provision : Provision( this coincides $r )
+        $pool : ProvisionPool( cluster == $c )
+        not( Processed( $provision ;) )
+    then
+    	modify($pool) {
+    		setQuantity($pool.getQuantity() + $provision.getQuantity());
+    	}
+    	insert( new Processed( $provision ) );
+        logger.info( $provision  +" pool is now "+ $pool);
+end
+
+rule "Set g and q"
+	when
+		$action : Generate( $p : player, $g : g, $q : q)
+		not( Processed( $action ;) )
+	then
+		modify($p) {
+			setG( $g ),
+			setQ( $q );
+		}
+		insert( new Processed( $action ) );
+		logger.info("Setting g and q for "+$p);
+end
