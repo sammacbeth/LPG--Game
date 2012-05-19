@@ -17,4 +17,12 @@ public class Demand implements Action {
 		return "Demand [player=" + player.getId() + ", quantity=" + quantity + "]";
 	}
 
+	public Player getPlayer() {
+		return player;
+	}
+
+	public double getQuantity() {
+		return quantity;
+	}
+
 }

@@ -21,6 +21,10 @@ declare Provision
 	@role( event )
 end
 
+declare Demand
+	@role( event )
+end
+
 declare Generate
 	@role( event )
 end
@@ -101,6 +105,20 @@ rule "Accumulate Provisions"
         logger.info( $provision  +" pool is now "+ $pool);
 end
 
+rule "Process Demand"
+	salience 10
+	when
+		$r : Round( type == RoundType.DEMAND )
+		$d : Demand( this coincides $r, $p : player, $q : quantity )
+		not( Processed( $d ;) )
+	then
+		modify($p) {
+			setD($q);
+		}
+		insert( new Processed( $d ) );
+		logger.info("Processed: "+ $d);
+end
+
 rule "Set g and q"
 	when
 		$action : Generate( $p : player, $g : g, $q : q)
@@ -152,9 +170,11 @@ rule "Surplus allocated pool"
 		$r : Round( type == RoundType.APPROPRIATE )
 		$c : Cluster( )
 		$a : AllocationPool( )
+		not( Processed( $a ;) )
 	then
 		logger.info($a.getQuantity() +" pool surplus");
 		modify($a) {
 			setQuantity(0);
 		}
+		insertLogical( new Processed( $a ) );
 end

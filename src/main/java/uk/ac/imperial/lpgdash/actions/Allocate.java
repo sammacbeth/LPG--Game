@@ -7,9 +7,9 @@ public class Allocate {
 	Player player;
 	double quantity;
 
-	public Allocate(Player player, double quantity) {
+	public Allocate(Player p, double quantity) {
 		super();
-		this.player = player;
+		this.player = p;
 		this.quantity = quantity;
 	}
 
@@ -23,7 +23,8 @@ public class Allocate {
 
 	@Override
 	public String toString() {
-		return "Allocate [player=" + player.getId() + ", quantity=" + quantity + "]";
+		return "Allocate [player=" + player.getId() + ", quantity=" + quantity
+				+ "]";
 	}
 
 }

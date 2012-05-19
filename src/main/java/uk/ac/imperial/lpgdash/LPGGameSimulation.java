@@ -19,6 +19,7 @@ import uk.ac.imperial.presage2.core.TimeDriven;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.core.simulator.InjectedSimulation;
+import uk.ac.imperial.presage2.core.simulator.Parameter;
 import uk.ac.imperial.presage2.core.simulator.Scenario;
 import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.rules.RuleModule;
@@ -35,6 +36,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 
 	private Set<Player> players = new HashSet<Player>();
 	private LPGService game;
+
+	@Parameter(name = "players")
+	public int playerCount;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -72,9 +76,10 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	protected void addToScenario(Scenario s) {
 		s.addTimeDriven(this);
 		session.setGlobal("logger", this.logger);
+		session.setGlobal("session", session);
 		Cluster c = new Cluster(0);
 		session.insert(c);
-		for (int n = 0; n < 2; n++) {
+		for (int n = 0; n < playerCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "p" + n));
 			Player p = new Player(pid, Random.randomDouble(),

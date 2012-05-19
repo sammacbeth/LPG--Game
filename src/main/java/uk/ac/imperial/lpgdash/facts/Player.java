@@ -7,6 +7,7 @@ public class Player {
 	UUID id;
 	double g = 0;
 	double q = 0;
+	double d = 0;
 	double allocated = 0;
 	double appropriated = 0;
 
@@ -45,6 +46,14 @@ public class Player {
 
 	public void setQ(double q) {
 		this.q = q;
+	}
+
+	public double getD() {
+		return d;
+	}
+
+	public void setD(double d) {
+		this.d = d;
 	}
 
 	public double getAllocated() {
