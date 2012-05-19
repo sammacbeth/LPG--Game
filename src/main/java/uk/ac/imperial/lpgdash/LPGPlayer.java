@@ -21,12 +21,12 @@ public class LPGPlayer extends AbstractParticipant {
 	double d = 0;
 	double p = 0;
 
-	double a = 1;
+	double a = 2;
 	double b = 1;
-	double c = 1;
+	double c = 3;
 
-	double alpha = 1;
-	double beta = 1;
+	double alpha = .1;
+	double beta = .1;
 	double satisfaction = 1;
 
 	protected LPGService game;
@@ -73,7 +73,7 @@ public class LPGPlayer extends AbstractParticipant {
 			provision(g);
 			demand(q);
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
-			appropriate(game.getR(getID()));
+			appropriate(game.getAllocated(getID()));
 		}
 	}
 
@@ -104,8 +104,8 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	protected void calculateScores() {
-		double r = game.getR(getID());
-		double rP = game.getRPrime(getID());
+		double r = game.getAllocated(getID());
+		double rP = game.getAppropriated(getID());
 		double rTotal = rP + (this.g - this.p);
 		double u = 0;
 		if (rTotal >= q)

@@ -41,11 +41,13 @@ public class LPGService extends EnvironmentService {
 
 	@EventListener
 	public void onIncrementTime(EndOfTimeCycle e) {
-		if (round == RoundType.DEMAND)
+		if (round == RoundType.DEMAND) {
 			round = RoundType.APPROPRIATE;
-		else {
+			session.insert(new Round(SimTime.get().intValue(),
+					RoundType.APPROPRIATE));
+		} else {
 			round = RoundType.DEMAND;
-			session.insert(new Round(SimTime.get().intValue()));
+			session.insert(new Round(SimTime.get().intValue(), RoundType.DEMAND));
 		}
 		logger.info("Next round: " + round);
 	}
@@ -84,12 +86,12 @@ public class LPGService extends EnvironmentService {
 		return getPlayer(player).getQ();
 	}
 
-	public double getR(UUID player) {
-		return 0;
+	public double getAllocated(UUID player) {
+		return getPlayer(player).getAllocated();
 	}
 
-	public double getRPrime(UUID player) {
-		return 0;
+	public double getAppropriated(UUID player) {
+		return getPlayer(player).getAppropriated();
 	}
 
 }

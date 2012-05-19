@@ -17,4 +17,12 @@ public class Appropriate implements Action {
 		return "Appropriate [player=" + player.getId() + ", quantity="
 				+ quantity + "]";
 	}
+
+	public Player getPlayer() {
+		return player;
+	}
+
+	public double getQuantity() {
+		return quantity;
+	}
 }

@@ -20,4 +20,8 @@ public class MemberOf {
 		return player;
 	}
 
+	public Cluster getCluster() {
+		return cluster;
+	}
+
 }

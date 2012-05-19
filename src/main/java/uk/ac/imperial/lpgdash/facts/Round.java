@@ -1,17 +1,24 @@
 package uk.ac.imperial.lpgdash.facts;
 
+import uk.ac.imperial.lpgdash.RoundType;
+
 public class Round {
 
-	public int number;
-	public final int roundLength = 1;
+	public final int number;
+	public final RoundType type;
 
-	public Round(int number) {
+	public Round(int number, RoundType type) {
 		super();
 		this.number = number;
+		this.type = type;
 	}
 
 	public int getNumber() {
 		return number;
+	}
+
+	public RoundType getType() {
+		return type;
 	}
 
 	@Override
@@ -31,6 +38,11 @@ public class Round {
 		if (number != other.number)
 			return false;
 		return true;
+	}
+
+	@Override
+	public String toString() {
+		return "Round [number=" + number + ", type=" + type + "]";
 	}
 
 }

@@ -7,6 +7,8 @@ public class Player {
 	UUID id;
 	double g = 0;
 	double q = 0;
+	double allocated = 0;
+	double appropriated = 0;
 
 	public Player(UUID aid) {
 		super();
@@ -33,16 +35,32 @@ public class Player {
 		return g;
 	}
 
-	public double getQ() {
-		return q;
-	}
-
 	public void setG(double g) {
 		this.g = g;
 	}
 
+	public double getQ() {
+		return q;
+	}
+
 	public void setQ(double q) {
 		this.q = q;
+	}
+
+	public double getAllocated() {
+		return allocated;
+	}
+
+	public void setAllocated(double allocated) {
+		this.allocated = allocated;
+	}
+
+	public double getAppropriated() {
+		return appropriated;
+	}
+
+	public void setAppropriated(double appropriated) {
+		this.appropriated = appropriated;
 	}
 
 }

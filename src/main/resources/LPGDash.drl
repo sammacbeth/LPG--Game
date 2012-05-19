@@ -3,11 +3,11 @@ package uk.ac.imperial.lpgdash
 
 #list any import classes here.
 import java.util.List
-import java.util.ArrayList
-import java.lang.Number
+import java.lang.Math
 import java.lang.Double
 import uk.ac.imperial.presage2.core.Action
 import uk.ac.imperial.presage2.rules.facts.Agent
+import uk.ac.imperial.lpgdash.RoundType
 import uk.ac.imperial.lpgdash.actions.*
 import uk.ac.imperial.lpgdash.facts.*
 
@@ -29,33 +29,70 @@ declare Allocate
 	@role( event )
 end
 
+declare Appropriate
+	@role( event )
+end
+
 declare ProvisionPool
 	cluster: Cluster @key
 	quantity: double
 end
 
+declare AllocationPool
+	cluster: Cluster @key
+	quantity: double
+end
+
 declare Processed
+	@role( event )
 	act: Object @key
+end
+
+rule "Discard Rounds"
+	salience 100
+	when
+		$r : Round( $n : number )
+		$r2 : Round( number < $n )
+	then
+		logger.info($r);
+		retract( $r2 );
 end
 
 rule "Init Provision Pool"
 	when
-		$r : Round( )
 		$c : Cluster( )
-		not( Round( this after $r ) )
 		not( ProvisionPool( cluster == $c ) )
 	then
 		insert(new ProvisionPool( $c, 0 ) );
 end
 
+rule "Init Allocation Pool"
+	when
+		$c : Cluster( )
+		not( AllocationPool( cluster == $c ) )
+	then
+		insert(new AllocationPool( $c, 0 ) );
+end
+
+rule "AllocationPool mirrors ProvisionPool increases"
+	when
+		$c : Cluster( )
+		$p : ProvisionPool( cluster == $c, $pq : quantity )
+		$a : AllocationPool( cluster == $c, $aq : quantity, quantity < $pq )
+	then
+		modify($a) {
+			setQuantity($pq);
+		}
+end
+
 rule "Accumulate Provisions"
 	salience 10
     when
-    	$r : Round( )
-    	$c : Cluster( )
-        $provision : Provision( this coincides $r )
-        $pool : ProvisionPool( cluster == $c )
-        not( Processed( $provision ;) )
+		$r : Round( type == RoundType.DEMAND )
+		$c : Cluster( )
+		$provision : Provision( this coincides $r )
+		$pool : ProvisionPool( cluster == $c )
+		not( Processed( $provision ;) )
     then
     	modify($pool) {
     		setQuantity($pool.getQuantity() + $provision.getQuantity());
@@ -75,4 +112,49 @@ rule "Set g and q"
 		}
 		insert( new Processed( $action ) );
 		logger.info("Setting g and q for "+$p);
+end
+
+rule "Process Allocations"
+	when
+		$a : Allocate( $p : player, $q : quantity )
+		not Processed( $a ;) 
+	then
+		logger.info("Processing allocation: "+ $a );
+		modify($p) {
+			setAllocated($q);
+		}
+		insert( new Processed( $a ) );
+end
+
+rule "Process Appropriate"
+	salience -5
+	when
+		$a : Appropriate( $player : player, $q : quantity )
+		not Processed( $a ;)
+		MemberOf( player == $player, $c : cluster )
+		$pool : AllocationPool( cluster == $c )
+	then
+		double canTake = Math.min( $pool.getQuantity(), $q );
+		modify($player) {
+			setAppropriated(canTake);
+		}
+		modify($pool) {
+			setQuantity( $pool.getQuantity() - canTake );
+		}
+		insert( new Processed( $a ) );
+		logger.info("Processing appropriate: "+ $a);
+end
+
+rule "Surplus allocated pool"
+	salience -100
+	no-loop
+	when
+		$r : Round( type == RoundType.APPROPRIATE )
+		$c : Cluster( )
+		$a : AllocationPool( )
+	then
+		logger.info($a.getQuantity() +" pool surplus");
+		modify($a) {
+			setQuantity(0);
+		}
 end
