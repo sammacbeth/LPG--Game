@@ -1,14 +1,18 @@
 package uk.ac.imperial.lpgdash.facts;
 
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
+
 public class Cluster {
 
-	int id;
+	final int id;
 	Allocation allocationMethod;
+	final SummaryStatistics fairnessData;
 
 	public Cluster(int id, Allocation allocationMethod) {
 		super();
 		this.id = id;
 		this.allocationMethod = allocationMethod;
+		this.fairnessData = new SummaryStatistics();
 	}
 
 	@Override
@@ -16,8 +20,16 @@ public class Cluster {
 		return "Cluster " + id + "";
 	}
 
+	public int getId() {
+		return id;
+	}
+
 	public Allocation getAllocationMethod() {
 		return allocationMethod;
+	}
+
+	public SummaryStatistics getFairnessData() {
+		return fairnessData;
 	}
 
 	@Override

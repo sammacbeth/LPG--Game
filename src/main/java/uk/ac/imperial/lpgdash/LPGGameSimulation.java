@@ -7,9 +7,6 @@ import java.util.UUID;
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Inject;
-
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
 import uk.ac.imperial.lpgdash.facts.Allocation;
@@ -29,6 +26,9 @@ import uk.ac.imperial.presage2.rules.facts.SimParticipantsTranslator;
 import uk.ac.imperial.presage2.util.environment.AbstractEnvironmentModule;
 import uk.ac.imperial.presage2.util.network.NetworkModule;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.Inject;
+
 public class LPGGameSimulation extends InjectedSimulation implements TimeDriven {
 
 	private final Logger logger = Logger
@@ -38,8 +38,23 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	private Set<Player> players = new HashSet<Player>();
 	private LPGService game;
 
-	@Parameter(name = "players")
-	public int playerCount;
+	@Parameter(name = "cCount")
+	public int cCount;
+	@Parameter(name = "cPCheat")
+	public double cPCheat;
+
+	@Parameter(name = "ncCount")
+	public int ncCount;
+	@Parameter(name = "ncPCheat")
+	public double ncPCheat;
+
+	@Parameter(name = "clusters")
+	public String clusters;
+
+	@Parameter(name = "alpha")
+	public double alpha;
+	@Parameter(name = "beta")
+	public double beta;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -68,6 +83,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				.setStorage(RuleStorage.class));
 		modules.add(new RuleModule().addClasspathDrlFile("LPGDash.drl")
 				.addClasspathDrlFile("RationAllocation.drl")
+				.addClasspathDrlFile("RandomAllocation.drl")
 				.addStateTranslator(SimParticipantsTranslator.class));
 		modules.add(NetworkModule.noNetworkModule());
 		return modules;
@@ -79,11 +95,24 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.graphDb);
-		Cluster c = new Cluster(0, Allocation.RATION);
+		Cluster c;
+		if (clusters.equalsIgnoreCase(Allocation.RANDOM.name()))
+			c = new Cluster(0, Allocation.RANDOM);
+		else
+			c = new Cluster(0, Allocation.RATION);
 		session.insert(c);
-		for (int n = 0; n < playerCount; n++) {
+		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "p" + n));
+			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
+			Player p = new Player(pid, Random.randomDouble(),
+					Random.randomDouble());
+			players.add(p);
+			session.insert(p);
+			session.insert(new MemberOf(p, c));
+		}
+		for (int n = 0; n < ncCount; n++) {
+			UUID pid = Random.randomUUID();
+			s.addParticipant(new LPGPlayer(pid, "c" + n, ncPCheat, alpha, beta));
 			Player p = new Player(pid, Random.randomDouble(),
 					Random.randomDouble());
 			players.add(p);
@@ -95,6 +124,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Override
 	public void incrementTime() {
 		if (this.game.getRound() == RoundType.APPROPRIATE) {
+			// generate new g and q
 			for (Player p : players) {
 				session.insert(new Generate(p));
 			}

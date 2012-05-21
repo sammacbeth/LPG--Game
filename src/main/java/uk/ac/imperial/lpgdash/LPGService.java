@@ -9,6 +9,8 @@ import org.apache.log4j.Logger;
 import org.drools.runtime.ObjectFilter;
 import org.drools.runtime.StatefulKnowledgeSession;
 
+import uk.ac.imperial.lpgdash.facts.Cluster;
+import uk.ac.imperial.lpgdash.facts.MemberOf;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.lpgdash.facts.Round;
 import uk.ac.imperial.presage2.core.environment.EnvironmentRegistrationRequest;
@@ -92,6 +94,25 @@ public class LPGService extends EnvironmentService {
 
 	public double getAppropriated(UUID player) {
 		return getPlayer(player).getAppropriated();
+	}
+
+	public Cluster getCluster(final UUID player) {
+		Collection<Object> rawMembers = session.getObjects(new ObjectFilter() {
+			@Override
+			public boolean accept(Object object) {
+				if (object instanceof MemberOf) {
+					MemberOf m = (MemberOf) object;
+					if (m.getPlayer().getId().equals(player)) {
+						return true;
+					}
+				}
+				return false;
+			}
+		});
+		if (rawMembers.size() == 1) {
+			return ((MemberOf) rawMembers.iterator().next()).getCluster();
+		}
+		return null;
 	}
 
 }

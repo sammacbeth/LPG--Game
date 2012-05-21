@@ -5,7 +5,9 @@ import java.util.UUID;
 
 import uk.ac.imperial.lpgdash.actions.Appropriate;
 import uk.ac.imperial.lpgdash.actions.Demand;
+import uk.ac.imperial.lpgdash.actions.LeaveCluster;
 import uk.ac.imperial.lpgdash.actions.Provision;
+import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 import uk.ac.imperial.presage2.core.environment.ActionHandlingException;
 import uk.ac.imperial.presage2.core.environment.ParticipantSharedState;
@@ -30,7 +32,9 @@ public class LPGPlayer extends AbstractParticipant {
 
 	double alpha = .1;
 	double beta = .1;
-	double satisfaction = 1;
+	double satisfaction = 0.5;
+
+	Cluster cluster = null;
 
 	protected LPGService game;
 
@@ -38,9 +42,11 @@ public class LPGPlayer extends AbstractParticipant {
 		super(id, name);
 	}
 
-	public LPGPlayer(UUID id, String name, double pCheat) {
+	public LPGPlayer(UUID id, String name, double pCheat, double alpha, double beta) {
 		super(id, name);
 		this.pCheat = pCheat;
+		this.alpha = alpha;
+		this.beta = beta;
 	}
 
 	@Override
@@ -56,6 +62,14 @@ public class LPGPlayer extends AbstractParticipant {
 		} catch (UnavailableServiceException e) {
 			logger.warn("Couldn't get environment service", e);
 		}
+		if (this.persist != null) {
+			this.persist.setProperty("pCheat", Double.toString(this.pCheat));
+			this.persist.setProperty("a", Double.toString(this.a));
+			this.persist.setProperty("b", Double.toString(this.b));
+			this.persist.setProperty("c", Double.toString(this.c));
+			this.persist.setProperty("alpha", Double.toString(this.alpha));
+			this.persist.setProperty("beta", Double.toString(this.beta));
+		}
 	}
 
 	@Override
@@ -67,24 +81,34 @@ public class LPGPlayer extends AbstractParticipant {
 	@Override
 	public void execute() {
 		super.execute();
+		this.cluster = this.game.getCluster(getID());
+
+		if (this.cluster == null) {
+			return;
+		}
+
 		int time = SimTime.get().intValue();
 		if (game.getRound() == RoundType.DEMAND) {
 			if (time > 1) {
 				// determine utility gained from last round
 				calculateScores();
 			}
-
-			// update g and q for this round
-			g = game.getG(getID());
-			q = game.getQ(getID());
-
-			if (Random.randomDouble() < pCheat) {
-				// cheat: provision less than g
-				provision(g * Random.randomDouble());
-				demand(q);
+			if (this.satisfaction < 0.1 && time > 20 && (time + 5) % 40 < 2) {
+				leaveCluster();
 			} else {
-				provision(g);
-				demand(q);
+
+				// update g and q for this round
+				g = game.getG(getID());
+				q = game.getQ(getID());
+
+				if (Random.randomDouble() < pCheat) {
+					// cheat: provision less than g
+					provision(g * Random.randomDouble());
+					demand(q);
+				} else {
+					provision(g);
+					demand(q);
+				}
 			}
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
 			appropriate(game.getAllocated(getID()));
@@ -114,6 +138,14 @@ public class LPGPlayer extends AbstractParticipant {
 			environment.act(new Appropriate(r), getID(), authkey);
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to appropriate", e);
+		}
+	}
+
+	protected void leaveCluster() {
+		try {
+			environment.act(new LeaveCluster(this.cluster), getID(), authkey);
+		} catch (ActionHandlingException e) {
+			logger.warn("Failed to leave cluster", e);
 		}
 	}
 
@@ -148,6 +180,7 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("RTotal", Double.toString(rTotal));
 			state.setProperty("U", Double.toString(u));
 			state.setProperty("o", Double.toString(satisfaction));
+			state.setProperty("cluster", "c" + this.cluster.getId());
 		}
 	}
 }

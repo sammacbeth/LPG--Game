@@ -35,7 +35,8 @@ public class LPGActionHandler implements ActionHandler {
 
 	@Override
 	public boolean canHandle(Action action) {
-		return (action instanceof Demand || action instanceof Provision || action instanceof Appropriate);
+		return (action instanceof Demand || action instanceof Provision
+				|| action instanceof Appropriate || action instanceof LeaveCluster);
 	}
 
 	private synchronized Player getPlayer(final UUID id) {
@@ -65,6 +66,8 @@ public class LPGActionHandler implements ActionHandler {
 			((Provision) action).player = p;
 		} else if (action instanceof Appropriate) {
 			((Appropriate) action).player = p;
+		} else if (action instanceof LeaveCluster) {
+			((LeaveCluster) action).player = p;
 		}
 		session.insert(action);
 		logger.debug("Handling: " + action);

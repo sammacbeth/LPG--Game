@@ -10,8 +10,11 @@ import uk.ac.imperial.presage2.rules.facts.Agent
 import uk.ac.imperial.lpgdash.RoundType
 import uk.ac.imperial.lpgdash.actions.*
 import uk.ac.imperial.lpgdash.facts.*
+import org.apache.commons.math.stat.descriptive.SummaryStatistics
+import uk.ac.imperial.presage2.core.db.StorageService
 
 global org.apache.log4j.Logger logger
+global uk.ac.imperial.presage2.core.db.StorageService storage
 
 declare Round
 	@role( event )
@@ -34,6 +37,10 @@ declare Allocate
 end
 
 declare Appropriate
+	@role( event )
+end
+
+declare LeaveCluster
 	@role( event )
 end
 
@@ -116,7 +123,7 @@ rule "Process Demand"
 			setD($q);
 		}
 		insert( new Processed( $d ) );
-		logger.info("Processed: "+ $d);
+		logger.info($d);
 end
 
 rule "Set g and q"
@@ -163,6 +170,17 @@ rule "Process Appropriate"
 		logger.info("Processing appropriate: "+ $a);
 end
 
+rule "Leave cluster"
+	when
+		$a : LeaveCluster( $c : cluster, $p : player )
+		$m : MemberOf( cluster == $c, player == $p )
+		not Processed( $a ;)
+	then
+		retract( $m );
+		insert( new Processed( $a ) );
+		logger.info("Left cluster: "+ $p );
+end
+
 rule "Surplus allocated pool"
 	salience -100
 	no-loop
@@ -177,4 +195,27 @@ rule "Surplus allocated pool"
 			setQuantity(0);
 		}
 		insertLogical( new Processed( $a ) );
+end
+
+rule "Calculate round fairness"
+	salience -99
+	when
+		$r : Round( type == RoundType.DEMAND )
+		$c : Cluster( $fairness : fairnessData )
+		$members : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+		$allocations : List(size > 0) from accumulate( 
+			Demand( this coincides $r, player memberOf $members, $p : player, $d : quantity, quantity > 0)
+			and
+			Allocate( this after $r, player == $p, $a : quantity ),
+			collectList( $a / $d )
+		)
+	then
+		for( Object v : $allocations ) {
+			$fairness.addValue( Math.min(((Number) v).doubleValue(), 1) );
+		}
+		if (storage != null) {
+			storage.getSimulation().getEnvironment().setProperty("c"+ $c.getId() +"-fairness",
+					$r.getNumber() + 1,
+					Double.toString($fairness.getStandardDeviation()));
+		}
 end

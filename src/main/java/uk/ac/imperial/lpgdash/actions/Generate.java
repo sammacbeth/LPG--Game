@@ -6,17 +6,14 @@ import uk.ac.imperial.presage2.core.util.random.Random;
 public class Generate {
 
 	public final Player player;
-	public double g;
+	public final double g;
 	public final double q;
 
 	public Generate(Player player) {
 		super();
 		this.player = player;
-		this.q = Random.randomDouble();
 		this.g = Random.randomDouble();
-		if(this.q <= this.g) {
-			this.g *= this.q;
-		}
+		this.q = this.g + (Random.randomDouble() * (1 - this.g));
 	}
 
 	public Player getPlayer() {

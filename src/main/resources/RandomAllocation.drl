@@ -1,0 +1,28 @@
+package uk.ac.imperial.lpgdash
+
+import java.util.List
+import java.util.ArrayList
+
+import uk.ac.imperial.lpgdash.allocators.RandomAllocator
+import uk.ac.imperial.lpgdash.ProvisionPool
+import uk.ac.imperial.lpgdash.actions.*
+import uk.ac.imperial.lpgdash.facts.*
+import uk.ac.imperial.lpgdash.RoundType
+
+global org.apache.log4j.Logger logger
+global org.drools.runtime.StatefulKnowledgeSession session
+
+rule "Random resource allocation"
+	no-loop
+	when
+		$r : Round( type == RoundType.DEMAND )
+		$c : Cluster( allocationMethod == Allocation.RANDOM )
+		$pool : ProvisionPool( cluster == $c )
+		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+	then
+		logger.info("Random order for resources " + $c);
+		RandomAllocator.allocate(session, $poolMembers, $pool.getQuantity());
+		modify( $pool ) {
+			setQuantity(0);
+		}
+end
