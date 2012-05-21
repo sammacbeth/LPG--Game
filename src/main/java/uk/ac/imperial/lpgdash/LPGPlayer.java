@@ -12,6 +12,7 @@ import uk.ac.imperial.presage2.core.environment.ParticipantSharedState;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.core.messaging.Input;
 import uk.ac.imperial.presage2.core.simulator.SimTime;
+import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 
 public class LPGPlayer extends AbstractParticipant {
@@ -25,6 +26,8 @@ public class LPGPlayer extends AbstractParticipant {
 	double b = 1;
 	double c = 3;
 
+	double pCheat = 0.0;
+
 	double alpha = .1;
 	double beta = .1;
 	double satisfaction = 1;
@@ -33,6 +36,11 @@ public class LPGPlayer extends AbstractParticipant {
 
 	public LPGPlayer(UUID id, String name) {
 		super(id, name);
+	}
+
+	public LPGPlayer(UUID id, String name, double pCheat) {
+		super(id, name);
+		this.pCheat = pCheat;
 	}
 
 	@Override
@@ -70,8 +78,14 @@ public class LPGPlayer extends AbstractParticipant {
 			g = game.getG(getID());
 			q = game.getQ(getID());
 
-			provision(g);
-			demand(q);
+			if (Random.randomDouble() < pCheat) {
+				// cheat: provision less than g
+				provision(g * Random.randomDouble());
+				demand(q);
+			} else {
+				provision(g);
+				demand(q);
+			}
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
 			appropriate(game.getAllocated(getID()));
 		}
