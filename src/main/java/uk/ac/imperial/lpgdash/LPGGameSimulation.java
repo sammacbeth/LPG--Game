@@ -12,6 +12,7 @@ import com.google.inject.Inject;
 
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
+import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.MemberOf;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -77,7 +78,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		s.addTimeDriven(this);
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
-		Cluster c = new Cluster(0);
+		session.setGlobal("storage", this.graphDb);
+		Cluster c = new Cluster(0, Allocation.RATION);
 		session.insert(c);
 		for (int n = 0; n < playerCount; n++) {
 			UUID pid = Random.randomUUID();

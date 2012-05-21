@@ -16,7 +16,7 @@ rule "Ration resource allocation"
 	no-loop
 	when
 		$r : Round( type == RoundType.DEMAND )
-		$c : Cluster( )
+		$c : Cluster( allocationMethod == Allocation.RATION )
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
