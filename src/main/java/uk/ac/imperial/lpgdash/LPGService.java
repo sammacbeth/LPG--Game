@@ -30,6 +30,7 @@ public class LPGService extends EnvironmentService {
 	private final Logger logger = Logger.getLogger(this.getClass());
 	final StatefulKnowledgeSession session;
 	Map<UUID, Player> players = new HashMap<UUID, Player>();
+	Map<UUID, MemberOf> members = new HashMap<UUID, MemberOf>();
 
 	RoundType round = RoundType.INIT;
 
@@ -76,6 +77,28 @@ public class LPGService extends EnvironmentService {
 		return players.get(id);
 	}
 
+	private synchronized MemberOf getMemberOf(final UUID id) {
+		if (!members.containsKey(id)) {
+			Collection<Object> rawMembers = session
+					.getObjects(new ObjectFilter() {
+						@Override
+						public boolean accept(Object object) {
+							return object instanceof MemberOf;
+						}
+					});
+			for (Object mObj : rawMembers) {
+				MemberOf m = (MemberOf) mObj;
+				members.put(m.player.getId(), m);
+			}
+		}
+		MemberOf m = members.get(id);
+		if (m != null && session.getFactHandle(m) == null) {
+			members.remove(m);
+			return null;
+		}
+		return m;
+	}
+
 	public RoundType getRound() {
 		return round;
 	}
@@ -97,22 +120,11 @@ public class LPGService extends EnvironmentService {
 	}
 
 	public Cluster getCluster(final UUID player) {
-		Collection<Object> rawMembers = session.getObjects(new ObjectFilter() {
-			@Override
-			public boolean accept(Object object) {
-				if (object instanceof MemberOf) {
-					MemberOf m = (MemberOf) object;
-					if (m.getPlayer().getId().equals(player)) {
-						return true;
-					}
-				}
-				return false;
-			}
-		});
-		if (rawMembers.size() == 1) {
-			return ((MemberOf) rawMembers.iterator().next()).getCluster();
-		}
-		return null;
+		MemberOf m = getMemberOf(player);
+		if (m != null)
+			return m.getCluster();
+		else
+			return null;
 	}
 
 }
