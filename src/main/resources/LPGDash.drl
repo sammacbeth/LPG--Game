@@ -40,6 +40,10 @@ declare Appropriate
 	@role( event )
 end
 
+declare JoinCluster
+	@role( event )
+end
+
 declare LeaveCluster
 	@role( event )
 end
@@ -168,6 +172,17 @@ rule "Process Appropriate"
 		}
 		insert( new Processed( $a ) );
 		logger.info("Processing appropriate: "+ $a);
+end
+
+rule "Join cluster"
+	when
+		$j : JoinCluster( $c : cluster, $p : player )
+		not MemberOf( player == $p )
+		not Processed( $j ;)
+	then
+		insert( new MemberOf( $p, $c ) );
+		insert( new Processed( $j ) );
+		logger.info("Joined cluster: "+ $p );
 end
 
 rule "Leave cluster"

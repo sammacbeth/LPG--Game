@@ -8,10 +8,10 @@ import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
 import uk.ac.imperial.lpgdash.actions.Generate;
+import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
-import uk.ac.imperial.lpgdash.facts.MemberOf;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.presage2.core.TimeDriven;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
@@ -108,7 +108,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 					Random.randomDouble());
 			players.add(p);
 			session.insert(p);
-			session.insert(new MemberOf(p, c));
+			session.insert(new JoinCluster(p, c));
 		}
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
@@ -117,7 +117,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 					Random.randomDouble());
 			players.add(p);
 			session.insert(p);
-			session.insert(new MemberOf(p, c));
+			session.insert(new JoinCluster(p, c));
 		}
 	}
 
