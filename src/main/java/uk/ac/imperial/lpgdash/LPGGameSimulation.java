@@ -84,6 +84,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		modules.add(new RuleModule().addClasspathDrlFile("LPGDash.drl")
 				.addClasspathDrlFile("RationAllocation.drl")
 				.addClasspathDrlFile("RandomAllocation.drl")
+				.addClasspathDrlFile("LegitimateClaimsAllocation.drl")
 				.addStateTranslator(SimParticipantsTranslator.class));
 		modules.add(NetworkModule.noNetworkModule());
 		return modules;
@@ -98,6 +99,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		Cluster c;
 		if (clusters.equalsIgnoreCase(Allocation.RANDOM.name()))
 			c = new Cluster(0, Allocation.RANDOM);
+		else if (clusters.equalsIgnoreCase(Allocation.LC_FIXED.name()))
+			c = new Cluster(0, Allocation.LC_FIXED);
 		else
 			c = new Cluster(0, Allocation.RATION);
 		session.insert(c);
