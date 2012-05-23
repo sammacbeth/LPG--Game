@@ -115,7 +115,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		}
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "c" + n, ncPCheat, alpha, beta));
+			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta));
 			Player p = new Player(pid, Random.randomDouble(),
 					Random.randomDouble());
 			players.add(p);

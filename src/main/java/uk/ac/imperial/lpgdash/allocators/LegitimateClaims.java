@@ -13,6 +13,7 @@ import org.drools.runtime.StatefulKnowledgeSession;
 
 import uk.ac.imperial.lpgdash.actions.Allocate;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
+import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.lpgdash.facts.PlayerHistory;
 
@@ -21,15 +22,16 @@ public class LegitimateClaims {
 	private final static Logger logger = Logger
 			.getLogger(LegitimateClaims.class);
 
+	private final static double[] fixedWeights = { 1, 0.5, 1, 1, 0.1 };
+
 	public static void allocate(StatefulKnowledgeSession session,
-			List<Player> players, double poolSize, List<PlayerHistory> histories) {
+			List<Player> players, double poolSize, Cluster c) {
 
 		// map player histories
 		final Map<UUID, PlayerHistory> historyMap = new HashMap<UUID, PlayerHistory>(
-				histories.size());
-		for (PlayerHistory playerHistory : histories) {
-			historyMap.put(playerHistory.getPlayer().getId(), playerHistory);
-			logger.info(playerHistory);
+				players.size());
+		for (Player p : players) {
+			historyMap.put(p.getId(), p.getHistory().get(c));
 		}
 
 		// f1: sort by average allocation ASC.
@@ -144,19 +146,19 @@ public class LegitimateClaims {
 			ranks.get(p.getId()).setF1(i);
 		}
 		for (int i = 0; i < f1a.size(); i++) {
-			Player p = f1.get(i);
+			Player p = f1a.get(i);
 			ranks.get(p.getId()).setF1a(i);
 		}
 		for (int i = 0; i < f2.size(); i++) {
-			Player p = f1.get(i);
+			Player p = f2.get(i);
 			ranks.get(p.getId()).setF2(i);
 		}
 		for (int i = 0; i < f3.size(); i++) {
-			Player p = f1.get(i);
+			Player p = f3.get(i);
 			ranks.get(p.getId()).setF3(i);
 		}
 		for (int i = 0; i < f4.size(); i++) {
-			Player p = f1.get(i);
+			Player p = f4.get(i);
 			ranks.get(p.getId()).setF4(i);
 		}
 
@@ -166,28 +168,29 @@ public class LegitimateClaims {
 		Collections.sort(rankList, new Comparator<BordaRank>() {
 			@Override
 			public int compare(BordaRank o1, BordaRank o2) {
-				double p1score = getScore(o1);
-				double p2score = getScore(o2);
+				double p1score = getScore(o1, nPlayers, fixedWeights);
+				double p2score = getScore(o2, nPlayers, fixedWeights);
 				return Double.compare(p2score, p1score);
 			}
 
-			private double getScore(BordaRank r) {
-				double score = 0;
-				score += nPlayers - r.getF1();
-				score += nPlayers - r.getF1a();
-				score += nPlayers - r.getF2();
-				score += nPlayers - r.getF3();
-				score += nPlayers - r.getF4();
-				return score;
-			}
 		});
 
 		for (BordaRank p : rankList) {
 			double allocation = Math.min(p.getPlayer().getD(), poolSize);
 			session.insert(new Allocate(p.getPlayer(), allocation));
 			poolSize -= allocation;
-			logger.info(p);
+			logger.info(p + ": " + getScore(p, nPlayers, fixedWeights));
 		}
+	}
+
+	private static double getScore(BordaRank r, int nPlayers, double[] weights) {
+		double score = 0;
+		score += weights[0] * (nPlayers - r.getF1());
+		score += weights[1] * (nPlayers - r.getF1a());
+		score += weights[2] * (nPlayers - r.getF2());
+		score += weights[3] * (nPlayers - r.getF3());
+		score += weights[4] * (nPlayers - r.getF4());
+		return score;
 	}
 
 }

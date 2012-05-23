@@ -11,60 +11,87 @@ import uk.ac.imperial.lpgdash.allocators.LegitimateClaims
 
 global org.apache.log4j.Logger logger
 
-rule "Create AverageActions"
+rule "Create PlayerHistory"
+	salience 2
 	when
 		MemberOf( $p : player, $c : cluster )
-		not PlayerHistory( player == $p, cluster == $c )
+		Player( this == $p, getHistory()[$c] == null )
 	then
-		insert( new PlayerHistory( $p, $c ) );
+		modify( $p ) {
+			getHistory().put( $c, new PlayerHistory( ) )
+		}
 end
 
-rule "Update AverageActions"
-	salience 1
-	no-loop
+rule "Update allocation history"
 	when
-		MemberOf( $p : player, $c : cluster )
-		$joined : JoinCluster( player == $p, cluster == $c )
+		$joined : JoinCluster( $p : player, $c : cluster )
+		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Allocate( player == $p, this after $joined, $q : quantity ), 
 			$allocated	: average($q)
 		)
+	then
+		modify( $p ) {
+			getHistory().get($c).setAverageAllocated( $allocated.doubleValue() )
+		}
+end
+
+rule "Update allocation count history"
+	when
+		$joined : JoinCluster( $p : player, $c : cluster )
+		MemberOf( player == $p, cluster == $c )
+		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Allocate( player == $p, this after $joined, $q : quantity, quantity > 0 ), 
 			$roundsWithAllocation : count($q)
 		)
+	then
+		modify( $p ) {
+			getHistory().get($c).setRoundsAllocated( $roundsWithAllocation.intValue() )
+		}
+end
+
+rule "Update demand history"
+	when
+		$joined : JoinCluster( $p : player, $c : cluster )
+		MemberOf( player == $p, cluster == $c )
+		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Demand( player == $p, this after $joined, $q : quantity ), 
 			$demanded	: average($q)
 		)
+	then
+		modify( $p ) {
+			getHistory().get($c).setAverageDemanded( $demanded.doubleValue() )
+		}
+end
+
+rule "Update provision history"
+	when
+		$joined : JoinCluster( $p : player, $c : cluster )
+		MemberOf( player == $p, cluster == $c )
+		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Provision( player == $p, this after $joined, $q : quantity ), 
 			$provided	: average($q),
 			$rounds		: count($q)
 		)
-		$av : PlayerHistory( player == $p, cluster == $c )
 	then
-		modify($av) {
-			setAverageAllocated( $allocated.doubleValue() ),
-			setRoundsAllocated( $roundsWithAllocation.intValue() ),
-			setAverageDemanded( $demanded.doubleValue() ),
-			setAverageProvided( $provided.doubleValue() ),
-			setRoundsParticipated( $rounds.intValue() )
+		modify( $p ) {
+			getHistory().get($c).setAverageProvided( $provided.doubleValue() ),
+			getHistory().get($c).setRoundsParticipated( $rounds.intValue() )
 		}
-		logger.info($p +" allocated :"+ $allocated +" in "+ $rounds +" rounds");
-		logger.info($p +" demanded :"+ $demanded +"");
-		logger.info($p +" provided :"+ $provided +"");
 end
 
 rule "LC fixed resource allocation"
 	no-loop
+	salience -2
 	when
 		$r : Round( type == RoundType.DEMAND )
 		not Processed( $r ;)
 		$c : Cluster( allocationMethod == Allocation.LC_FIXED )
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
-		$histories : List(size > 0) from collect( PlayerHistory( cluster == $c, player memberOf $poolMembers) )
 	then
 		logger.info("LC fixed allocation for resources " + $c);
-		LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $histories );
+		LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c );
 		modify( $pool ) {
 			setQuantity(0);
 		}

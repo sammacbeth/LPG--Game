@@ -1,5 +1,7 @@
 package uk.ac.imperial.lpgdash.facts;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 public class Player {
@@ -10,6 +12,8 @@ public class Player {
 	double d = 0;
 	double allocated = 0;
 	double appropriated = 0;
+
+	Map<Cluster, PlayerHistory> history = new HashMap<Cluster, PlayerHistory>();
 
 	public Player(UUID aid) {
 		super();
@@ -70,6 +74,10 @@ public class Player {
 
 	public void setAppropriated(double appropriated) {
 		this.appropriated = appropriated;
+	}
+
+	public Map<Cluster, PlayerHistory> getHistory() {
+		return history;
 	}
 
 	@Override
