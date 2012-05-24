@@ -96,13 +96,14 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.graphDb);
-		Cluster c;
-		if (clusters.equalsIgnoreCase(Allocation.RANDOM.name()))
-			c = new Cluster(0, Allocation.RANDOM);
-		else if (clusters.equalsIgnoreCase(Allocation.LC_FIXED.name()))
-			c = new Cluster(0, Allocation.LC_FIXED);
-		else
-			c = new Cluster(0, Allocation.RATION);
+		Allocation c0All = Allocation.RANDOM;
+		for(Allocation a : Allocation.values()) {
+			if(clusters.equalsIgnoreCase(a.name())) {
+				c0All = a;
+				break;
+			}
+		}
+		Cluster c = new Cluster(0, c0All);
 		session.insert(c);
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();

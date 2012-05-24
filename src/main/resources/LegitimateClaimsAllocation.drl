@@ -86,12 +86,44 @@ rule "LC fixed resource allocation"
 	when
 		$r : Round( type == RoundType.DEMAND )
 		not Processed( $r ;)
-		$c : Cluster( allocationMethod == Allocation.LC_FIXED )
+		$c : Cluster( $method : allocationMethod, 
+					allocationMethod == Allocation.LC_FIXED
+					|| allocationMethod == Allocation.LC_F1
+					|| allocationMethod == Allocation.LC_F1a
+					|| allocationMethod == Allocation.LC_F2
+					|| allocationMethod == Allocation.LC_F3
+					|| allocationMethod == Allocation.LC_F4 )
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
-		logger.info("LC fixed allocation for resources " + $c);
-		LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c );
+		logger.info( $method +" allocation for resources " + $c);
+		double[] wFixed = { 0.125, 0.125, 0.125, 0.125, 0.125 };
+		double[] wf1 = { 1, 0, 0, 0, 0 };
+		double[] wf1a = { 0, 1, 0, 0, 0 };
+		double[] wf2 = { 0, 0, 1, 0, 0 };
+		double[] wf3 = { 0, 0, 0, 1, 0 };
+		double[] wf4 = { 0, 0, 0, 0, 1 };
+		switch($method) {
+			case LC_F1:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf1 );
+				break;
+			case LC_F1a:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf1a );
+				break;
+			case LC_F2:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf2 );
+				break;
+			case LC_F3:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf3 );
+				break;
+			case LC_F4:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf4 );
+				break;
+			case LC_FIXED:
+			default:
+				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wFixed);
+		}
+
 		modify( $pool ) {
 			setQuantity(0);
 		}
