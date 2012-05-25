@@ -64,15 +64,15 @@ declare Processed
 	act: Object @key
 end
 
-declare MadeHead
+declare IsHead
 	@role( event )
-	@expires( 50s )
-	player : Player	@key
+	player : Player		@key
 	cluster : Cluster	@key
+	time : int 			@key
 end
 
 rule "Discard Rounds"
-	salience 100
+	salience 1000
 	when
 		$r : Round( $n : number )
 		$r2 : Round( number < $n )
@@ -206,6 +206,7 @@ end
 
 rule "Assign cluster head"
 	salience -1
+	no-loop
 	when
 		$c : Cluster( )
 		$members : List(size > 0) from accumulate(
@@ -218,14 +219,28 @@ rule "Assign cluster head"
 		Player randomMember =  (Player) $members.get( Random.randomInt( $members.size() ) );
 		logger.info("New head: "+ randomMember);
 		randomMember.setRole( Role.HEAD );
-		insert( new MadeHead( randomMember, $c ) );
+		//insert( new IsHead( randomMember, $c ) );
+end
+
+rule "Cluster head event"
+	no-loop
+	salience -2
+	when
+		Round( type == RoundType.DEMAND, $t : number )
+		$p : Player( role == Role.HEAD )
+		$c : Cluster( )
+		MemberOf( player == $p, cluster == $c )
+		not( IsHead( player == $p, cluster == $c, time == $t ) )
+	then
+		IsHead e = new IsHead( $p, $c, $t );
+		logger.info(e);
+		insert( e );
 end
 
 rule "Unassign cluster head after 20 rounds"
 	duration( 40s )
 	when
 		$p : Player( role == Role.HEAD )
-		$m : MadeHead( player == $p ) over window:time( 50s )
 	then
 		modify($p) {
 			setRole( Role.PROSUMER )

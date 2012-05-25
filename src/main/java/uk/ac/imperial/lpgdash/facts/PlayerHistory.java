@@ -10,6 +10,7 @@ public class PlayerHistory {
 	final SummaryStatistics satisfaction = new SummaryStatistics();
 	double averageProvided = 0;
 	int roundsParticipated = 0;
+	int roundsAsHead = 0;
 
 	public PlayerHistory() {
 		super();
@@ -59,13 +60,22 @@ public class PlayerHistory {
 		this.roundsParticipated = roundsParticipated;
 	}
 
+	public int getRoundsAsHead() {
+		return roundsAsHead;
+	}
+
+	public void setRoundsAsHead(int roundsAsHead) {
+		this.roundsAsHead = roundsAsHead;
+	}
+
 	@Override
 	public String toString() {
 		return "PlayerHistory [averageAllocated=" + averageAllocated
 				+ ", roundsAllocated=" + roundsAllocated + ", averageDemanded="
 				+ averageDemanded + ", averageSatifaction="
-				+ satisfaction.getMean() + ", averageProvided=" + averageProvided
-				+ ", roundsParticipated=" + roundsParticipated + "]";
+				+ satisfaction.getMean() + ", averageProvided="
+				+ averageProvided + ", roundsParticipated="
+				+ roundsParticipated + "]";
 	}
 
 }

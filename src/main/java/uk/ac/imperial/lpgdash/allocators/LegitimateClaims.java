@@ -22,7 +22,7 @@ public class LegitimateClaims {
 	private final static Logger logger = Logger
 			.getLogger(LegitimateClaims.class);
 
-	private final static double[] fixedWeights = { 1, 1, 1, 1, 1 };
+	private final static double[] fixedWeights = { 1, 1, 1, 1, 1, 1 };
 
 	public static List<Player> getF1(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
@@ -156,6 +156,31 @@ public class LegitimateClaims {
 		return f4;
 	}
 
+	public static List<Player> getF5(final List<Player> players,
+			final Map<UUID, PlayerHistory> historyMap) {
+		// f4: sort by no of cycles in cluster DESC
+		ArrayList<Player> f5 = new ArrayList<Player>(players);
+		if (fixedWeights[5] != 0.0) {
+			Collections.sort(f5, new Comparator<Player>() {
+				@Override
+				public int compare(Player o1, Player o2) {
+					// compare by average allocation
+					PlayerHistory h1 = historyMap.get(o1.getId());
+					PlayerHistory h2 = historyMap.get(o2.getId());
+					if (h1 == null && h2 == null)
+						return 0;
+					else if (h1 == null) {
+						return 1;
+					} else if (h2 == null) {
+						return -1;
+					}
+					return h2.getRoundsAsHead() - h1.getRoundsAsHead();
+				}
+			});
+		}
+		return f5;
+	}
+
 	public static void allocate(StatefulKnowledgeSession session,
 			List<Player> players, double poolSize, Cluster c,
 			final double[] weights) {
@@ -172,6 +197,7 @@ public class LegitimateClaims {
 		List<Player> f2 = getF2(players, historyMap);
 		List<Player> f3 = getF3(players, historyMap);
 		List<Player> f4 = getF4(players, historyMap);
+		List<Player> f5 = getF5(players, historyMap);
 
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
 		for (Player p : players) {
@@ -199,6 +225,10 @@ public class LegitimateClaims {
 		for (int i = 0; i < f4.size(); i++) {
 			Player p = f4.get(i);
 			ranks.get(p.getId()).setF4(i);
+		}
+		for (int i = 0; i < f5.size(); i++) {
+			Player p = f5.get(i);
+			ranks.get(p.getId()).setF5(i);
 		}
 
 		final int nPlayers = players.size();

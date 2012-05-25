@@ -80,6 +80,21 @@ rule "Update provision history"
 		}
 end
 
+rule "Count rounds as head"
+	no-loop
+	when
+		$joined : JoinCluster( $p : player, $c : cluster )
+		MemberOf( player == $p, cluster == $c )
+		not LeaveCluster( cluster == $c, player == $p )
+		accumulate( $e : IsHead( player == $p, cluster == $c, this after $joined ), 
+			$rounds		: count($e)
+		)
+	then
+		modify( $p ) {
+			getHistory().get($c).setRoundsAsHead( $rounds.intValue() )
+		}
+end
+
 rule "LC fixed resource allocation"
 	no-loop
 	salience -2
@@ -97,12 +112,12 @@ rule "LC fixed resource allocation"
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
 		logger.info( $method +" allocation for resources " + $c);
-		double[] wFixed = { 0.125, 0.125, 0.125, 0.125, 0.125 };
-		double[] wf1 = { 1, 0, 0, 0, 0 };
-		double[] wf1a = { 0, 1, 0, 0, 0 };
-		double[] wf2 = { 0, 0, 1, 0, 0 };
-		double[] wf3 = { 0, 0, 0, 1, 0 };
-		double[] wf4 = { 0, 0, 0, 0, 1 };
+		double[] wFixed = { 0.125, 0.125, 0.125, 0.125, 0.125, 0.125 };
+		double[] wf1 = { 1, 0, 0, 0, 0, 0 };
+		double[] wf1a = { 0, 1, 0, 0, 0, 0 };
+		double[] wf2 = { 0, 0, 1, 0, 0, 0 };
+		double[] wf3 = { 0, 0, 0, 1, 0, 0 };
+		double[] wf4 = { 0, 0, 0, 0, 1, 0 };
 		switch($method) {
 			case LC_F1:
 				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf1 );
