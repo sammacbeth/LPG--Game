@@ -12,6 +12,7 @@ public class Player {
 	double d = 0;
 	double allocated = 0;
 	double appropriated = 0;
+	Role role = Role.PROSUMER;
 
 	Map<Cluster, PlayerHistory> history = new HashMap<Cluster, PlayerHistory>();
 
@@ -29,7 +30,7 @@ public class Player {
 
 	@Override
 	public String toString() {
-		return "Player [id=" + id + ", g=" + g + ", q=" + q + "]";
+		return "Player [id=" + id + ", role=" + role +", g=" + g + ", q=" + q + "]";
 	}
 
 	public UUID getId() {
@@ -74,6 +75,14 @@ public class Player {
 
 	public void setAppropriated(double appropriated) {
 		this.appropriated = appropriated;
+	}
+
+	public Role getRole() {
+		return role;
+	}
+
+	public void setRole(Role role) {
+		this.role = role;
 	}
 
 	public Map<Cluster, PlayerHistory> getHistory() {
