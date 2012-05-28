@@ -22,7 +22,7 @@ public class LegitimateClaims {
 	private final static Logger logger = Logger
 			.getLogger(LegitimateClaims.class);
 
-	private final static double[] fixedWeights = { 1, 1, 1, 1, 1, 1 };
+	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1 };
 
 	public static List<Player> getF1(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
@@ -134,31 +134,31 @@ public class LegitimateClaims {
 		// f4: sort by no of cycles in cluster DESC
 		ArrayList<Player> f4 = new ArrayList<Player>(players);
 		if (fixedWeights[4] != 0.0) {
-			Collections.sort(f4,
-					Collections.reverseOrder(new Comparator<Player>() {
-						@Override
-						public int compare(Player o1, Player o2) {
-							// compare by average allocation
-							PlayerHistory h1 = historyMap.get(o1.getId());
-							PlayerHistory h2 = historyMap.get(o2.getId());
-							if (h1 == null && h2 == null)
-								return 0;
-							else if (h1 == null) {
-								return 1;
-							} else if (h2 == null) {
-								return -1;
-							}
-							return h2.getRoundsParticipated()
-									- h1.getRoundsParticipated();
-						}
-					}));
+			Collections.sort(f4, new Comparator<Player>() {
+				@Override
+				public int compare(Player o1, Player o2) {
+					// compare by average allocation
+					PlayerHistory h1 = historyMap.get(o1.getId());
+					PlayerHistory h2 = historyMap.get(o2.getId());
+					if (h1 == null && h2 == null)
+						return 0;
+					else if (h1 == null) {
+						return 1;
+					} else if (h2 == null) {
+						return -1;
+					}
+					return (h2.getRoundsParticipated() - h2.getRoundsAsHead())
+							- (h1.getRoundsParticipated() - h1
+									.getRoundsAsHead());
+				}
+			});
 		}
 		return f4;
 	}
 
 	public static List<Player> getF5(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
-		// f4: sort by no of cycles in cluster DESC
+		// f5: sort by no of cycles as head DESC
 		ArrayList<Player> f5 = new ArrayList<Player>(players);
 		if (fixedWeights[5] != 0.0) {
 			Collections.sort(f5, new Comparator<Player>() {
@@ -192,6 +192,7 @@ public class LegitimateClaims {
 			historyMap.put(p.getId(), p.getHistory().get(c));
 		}
 
+		fixedWeights = weights;
 		List<Player> f1 = getF1(players, historyMap);
 		List<Player> f1a = getF1a(players, historyMap);
 		List<Player> f2 = getF2(players, historyMap);
