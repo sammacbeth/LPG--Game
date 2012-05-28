@@ -83,9 +83,11 @@ public class PlayerHistory {
 	public String toString() {
 		return "PlayerHistory [averageAllocated=" + averageAllocated
 				+ ", roundsAllocated=" + roundsAllocated + ", averageDemanded="
-				+ averageDemanded + ", averageSatifaction=" + satisfaction
+				+ averageDemanded + ", satisfaction=" + satisfaction
 				+ ", averageProvided=" + averageProvided
-				+ ", roundsParticipated=" + roundsParticipated + "]";
+				+ ", roundsParticipated=" + roundsParticipated
+				+ ", roundsAsHead=" + roundsAsHead + ", compliantRounds="
+				+ compliantRounds + "]";
 	}
 
 }

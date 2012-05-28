@@ -184,7 +184,7 @@ public class LegitimateClaims {
 
 	public static List<Player> getF6(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
-		// f5: sort by no of cycles as head DESC
+		// f6: sort by no of compliant cycles DESC
 		ArrayList<Player> f6 = new ArrayList<Player>(players);
 		if (fixedWeights[6] != 0.0) {
 			Collections.sort(f6, new Comparator<Player>() {
@@ -207,36 +207,62 @@ public class LegitimateClaims {
 		return f6;
 	}
 
+	public static List<Player> getF7(final List<Player> players,
+			final Map<UUID, PlayerHistory> historyMap) {
+		// f7: sort by satisfaction DESC
+		ArrayList<Player> f7 = new ArrayList<Player>(players);
+		if (fixedWeights[7] != 0.0) {
+			Collections.sort(f7, new Comparator<Player>() {
+				@Override
+				public int compare(Player o1, Player o2) {
+					// compare by average allocation
+					PlayerHistory h1 = historyMap.get(o1.getId());
+					PlayerHistory h2 = historyMap.get(o2.getId());
+					if (h1 == null && h2 == null)
+						return 0;
+					else if (h1 == null) {
+						return 1;
+					} else if (h2 == null) {
+						return -1;
+					}
+					return Double.compare(h2.getSatisfaction(),
+							h1.getSatisfaction());
+				}
+			});
+		}
+		return f7;
+	}
+
 	public static void allocate(StatefulKnowledgeSession session,
 			List<Player> players, double poolSize, Cluster c,
 			final Allocation method, int t) {
 
 		switch (method) {
 		case LC_F1:
-			fixedWeights = new double[] { 1, 0, 0, 0, 0, 0, 0 };
+			fixedWeights = new double[] { 1, 0, 0, 0, 0, 0, 0, 0 };
 			break;
 		case LC_F1a:
-			fixedWeights = new double[] { 0, 1, 0, 0, 0, 0, 0 };
+			fixedWeights = new double[] { 0, 1, 0, 0, 0, 0, 0, 0 };
 			break;
 		case LC_F2:
-			fixedWeights = new double[] { 0, 0, 1, 0, 0, 0, 0 };
+			fixedWeights = new double[] { 0, 0, 1, 0, 0, 0, 0, 0 };
 			break;
 		case LC_F3:
-			fixedWeights = new double[] { 0, 0, 0, 1, 0, 0, 0 };
+			fixedWeights = new double[] { 0, 0, 0, 1, 0, 0, 0, 0 };
 			break;
 		case LC_F4:
-			fixedWeights = new double[] { 0, 0, 0, 0, 1, 0, 0 };
+			fixedWeights = new double[] { 0, 0, 0, 0, 1, 0, 0, 0 };
 			break;
 		case LC_F5:
-			fixedWeights = new double[] { 0, 0, 0, 0, 0, 1, 0 };
+			fixedWeights = new double[] { 0, 0, 0, 0, 0, 1, 0, 0 };
 			break;
 		case LC_F6:
-			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 1 };
+			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 1, 0 };
 			break;
 		case LC_FIXED:
 		default:
 			fixedWeights = new double[] { 0.125, 0.125, 0.125, 0.125, 0.125,
-					0.125, 0.125 };
+					0.125, 0.125, 0.125 };
 			break;
 		}
 
@@ -254,6 +280,7 @@ public class LegitimateClaims {
 		List<Player> f4 = getF4(players, historyMap);
 		List<Player> f5 = getF5(players, historyMap);
 		List<Player> f6 = getF6(players, historyMap);
+		List<Player> f7 = getF7(players, historyMap);
 
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
 		for (Player p : players) {
@@ -263,32 +290,14 @@ public class LegitimateClaims {
 
 		// associate ranks with agents
 		for (int i = 0; i < f1.size(); i++) {
-			Player p = f1.get(i);
-			ranks.get(p.getId()).setF1(i);
-		}
-		for (int i = 0; i < f1a.size(); i++) {
-			Player p = f1a.get(i);
-			ranks.get(p.getId()).setF1a(i);
-		}
-		for (int i = 0; i < f2.size(); i++) {
-			Player p = f2.get(i);
-			ranks.get(p.getId()).setF2(i);
-		}
-		for (int i = 0; i < f3.size(); i++) {
-			Player p = f3.get(i);
-			ranks.get(p.getId()).setF3(i);
-		}
-		for (int i = 0; i < f4.size(); i++) {
-			Player p = f4.get(i);
-			ranks.get(p.getId()).setF4(i);
-		}
-		for (int i = 0; i < f5.size(); i++) {
-			Player p = f5.get(i);
-			ranks.get(p.getId()).setF5(i);
-		}
-		for (int i = 0; i < f6.size(); i++) {
-			Player p = f6.get(i);
-			ranks.get(p.getId()).setF6(i);
+			ranks.get(f1.get(i).getId()).setF1(i);
+			ranks.get(f1a.get(i).getId()).setF1a(i);
+			ranks.get(f2.get(i).getId()).setF2(i);
+			ranks.get(f3.get(i).getId()).setF3(i);
+			ranks.get(f4.get(i).getId()).setF4(i);
+			ranks.get(f5.get(i).getId()).setF5(i);
+			ranks.get(f6.get(i).getId()).setF6(i);
+			ranks.get(f7.get(i).getId()).setF7(i);
 		}
 
 		final int nPlayers = players.size();
@@ -320,6 +329,7 @@ public class LegitimateClaims {
 		score += weights[4] * (nPlayers - r.getF4());
 		score += weights[5] * (nPlayers - r.getF5());
 		score += weights[6] * (nPlayers - r.getF6());
+		score += weights[7] * (nPlayers - r.getF7());
 		return score;
 	}
 
