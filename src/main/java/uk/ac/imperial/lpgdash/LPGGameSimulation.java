@@ -97,8 +97,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.graphDb);
 		Allocation c0All = Allocation.RANDOM;
-		for(Allocation a : Allocation.values()) {
-			if(clusters.equalsIgnoreCase(a.name())) {
+		for (Allocation a : Allocation.values()) {
+			if (clusters.equalsIgnoreCase(a.name())) {
 				c0All = a;
 				break;
 			}
@@ -108,20 +108,20 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
-			Player p = new Player(pid, Random.randomDouble(),
-					Random.randomDouble());
+			Player p = new Player(pid, alpha, beta);
 			players.add(p);
 			session.insert(p);
 			session.insert(new JoinCluster(p, c));
+			session.insert(new Generate(p, game.getRoundNumber() + 1));
 		}
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta));
-			Player p = new Player(pid, Random.randomDouble(),
-					Random.randomDouble());
+			Player p = new Player(pid, alpha, beta);
 			players.add(p);
 			session.insert(p);
 			session.insert(new JoinCluster(p, c));
+			session.insert(new Generate(p, game.getRoundNumber() + 1));
 		}
 	}
 
@@ -130,7 +130,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		if (this.game.getRound() == RoundType.APPROPRIATE) {
 			// generate new g and q
 			for (Player p : players) {
-				session.insert(new Generate(p, game.getRoundNumber()+1));
+				session.insert(new Generate(p, game.getRoundNumber() + 1));
 			}
 		}
 	}

@@ -1,13 +1,11 @@
 package uk.ac.imperial.lpgdash.facts;
 
-import org.apache.commons.math.stat.descriptive.SummaryStatistics;
-
 public class PlayerHistory {
 
 	double averageAllocated = 0;
 	int roundsAllocated = 0;
 	double averageDemanded = 0;
-	final SummaryStatistics satisfaction = new SummaryStatistics();
+	double satisfaction = 0.5;
 	double averageProvided = 0;
 	int roundsParticipated = 0;
 	int roundsAsHead = 0;
@@ -41,8 +39,12 @@ public class PlayerHistory {
 		this.averageDemanded = averageDemanded;
 	}
 
-	public SummaryStatistics getSatisfaction() {
+	public double getSatisfaction() {
 		return satisfaction;
+	}
+
+	public void setSatisfaction(double satisfaction) {
+		this.satisfaction = satisfaction;
 	}
 
 	public double getAverageProvided() {
@@ -81,10 +83,9 @@ public class PlayerHistory {
 	public String toString() {
 		return "PlayerHistory [averageAllocated=" + averageAllocated
 				+ ", roundsAllocated=" + roundsAllocated + ", averageDemanded="
-				+ averageDemanded + ", averageSatifaction="
-				+ satisfaction.getMean() + ", averageProvided="
-				+ averageProvided + ", roundsParticipated="
-				+ roundsParticipated + "]";
+				+ averageDemanded + ", averageSatifaction=" + satisfaction
+				+ ", averageProvided=" + averageProvided
+				+ ", roundsParticipated=" + roundsParticipated + "]";
 	}
 
 }

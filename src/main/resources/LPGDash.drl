@@ -75,7 +75,7 @@ rule "Discard Rounds"
 	salience 1000
 	when
 		$r : Round( $n : number )
-		$r2 : Round( number < $n )
+		$r2 : Round( number <= $n, this != $r )
 	then
 		logger.info($r);
 		retract( $r2 );
@@ -148,7 +148,7 @@ rule "Set g and q"
 			setQ( $q );
 		}
 		insert( new Processed( $action ) );
-		logger.info("Setting g and q for "+$p);
+		logger.info($action);
 end
 
 rule "Process Allocations"

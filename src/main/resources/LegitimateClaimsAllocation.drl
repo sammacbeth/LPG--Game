@@ -106,7 +106,7 @@ rule "Count compliant rounds"
 			Demand( $d : quantity, player == $player, t == $t, quantity == $q )
 			and
 			Provision( $p : quantity, player == $player, t == $t, quantity == $g )
-			and 
+			and
 			Allocate( $r : quantity, player == $player, t == $t )
 			and
 			Appropriate( $rP : quantity, player == $player, t == $t, quantity == $r )
@@ -117,6 +117,26 @@ rule "Count compliant rounds"
 		modify( $player ) {
 			getHistory().get($c).setCompliantRounds( $rounds.intValue() )
 		}
+end
+
+rule "Calculate satisfaction from previous round"
+	when
+		MemberOf( $player : player, $c : cluster )
+		Round( $t : number, type == RoundType.DEMAND )
+		Generate( $g : g, $q : q, player == $player, t == $t-1 )
+		Demand( $d : quantity, player == $player, t == $t-1 )
+		Provision( $p : quantity, player == $player, t == $t-1 )
+		Appropriate( $r : quantity, player == $player, t == $t-1 )
+	then
+		PlayerHistory hist = $player.getHistory().get($c);
+		double s = hist.getSatisfaction();
+		double R = $r + ( $g - $p );
+		if( R >= $q ) {
+			s = s + $player.getAlpha() * (1 - s);
+		} else {
+			s = s - $player.getBeta() * s;
+		}
+		hist.setSatisfaction(s);
 end
 
 rule "LC resource allocation"
@@ -136,33 +156,7 @@ rule "LC resource allocation"
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
 		logger.info( $method +" allocation for resources " + $c);
-		double[] wFixed = { 0.125, 0.125, 0.125, 0.125, 0.125, 0.125 };
-		double[] wf1 = { 1, 0, 0, 0, 0, 0 };
-		double[] wf1a = { 0, 1, 0, 0, 0, 0 };
-		double[] wf2 = { 0, 0, 1, 0, 0, 0 };
-		double[] wf3 = { 0, 0, 0, 1, 0, 0 };
-		double[] wf4 = { 0, 0, 0, 0, 1, 0 };
-		switch($method) {
-			case LC_F1:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf1, $t );
-				break;
-			case LC_F1a:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf1a, $t );
-				break;
-			case LC_F2:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf2, $t );
-				break;
-			case LC_F3:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf3, $t );
-				break;
-			case LC_F4:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wf4, $t );
-				break;
-			case LC_FIXED:
-			default:
-				LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, wFixed, $t );
-		}
-
+		LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, $method, $t );
 		modify( $pool ) {
 			setQuantity(0);
 		}

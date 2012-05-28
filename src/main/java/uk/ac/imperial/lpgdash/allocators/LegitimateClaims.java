@@ -12,6 +12,7 @@ import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
 import uk.ac.imperial.lpgdash.actions.Allocate;
+import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -22,7 +23,7 @@ public class LegitimateClaims {
 	private final static Logger logger = Logger
 			.getLogger(LegitimateClaims.class);
 
-	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1 };
+	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1, 1 };
 
 	public static List<Player> getF1(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
@@ -181,9 +182,63 @@ public class LegitimateClaims {
 		return f5;
 	}
 
+	public static List<Player> getF6(final List<Player> players,
+			final Map<UUID, PlayerHistory> historyMap) {
+		// f5: sort by no of cycles as head DESC
+		ArrayList<Player> f6 = new ArrayList<Player>(players);
+		if (fixedWeights[6] != 0.0) {
+			Collections.sort(f6, new Comparator<Player>() {
+				@Override
+				public int compare(Player o1, Player o2) {
+					// compare by average allocation
+					PlayerHistory h1 = historyMap.get(o1.getId());
+					PlayerHistory h2 = historyMap.get(o2.getId());
+					if (h1 == null && h2 == null)
+						return 0;
+					else if (h1 == null) {
+						return 1;
+					} else if (h2 == null) {
+						return -1;
+					}
+					return h2.getCompliantRounds() - h1.getCompliantRounds();
+				}
+			});
+		}
+		return f6;
+	}
+
 	public static void allocate(StatefulKnowledgeSession session,
 			List<Player> players, double poolSize, Cluster c,
-			final double[] weights, int t) {
+			final Allocation method, int t) {
+
+		switch (method) {
+		case LC_F1:
+			fixedWeights = new double[] { 1, 0, 0, 0, 0, 0, 0 };
+			break;
+		case LC_F1a:
+			fixedWeights = new double[] { 0, 1, 0, 0, 0, 0, 0 };
+			break;
+		case LC_F2:
+			fixedWeights = new double[] { 0, 0, 1, 0, 0, 0, 0 };
+			break;
+		case LC_F3:
+			fixedWeights = new double[] { 0, 0, 0, 1, 0, 0, 0 };
+			break;
+		case LC_F4:
+			fixedWeights = new double[] { 0, 0, 0, 0, 1, 0, 0 };
+			break;
+		case LC_F5:
+			fixedWeights = new double[] { 0, 0, 0, 0, 0, 1, 0 };
+			break;
+		case LC_F6:
+			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 1 };
+			break;
+		case LC_FIXED:
+		default:
+			fixedWeights = new double[] { 0.125, 0.125, 0.125, 0.125, 0.125,
+					0.125, 0.125 };
+			break;
+		}
 
 		// map player histories
 		final Map<UUID, PlayerHistory> historyMap = new HashMap<UUID, PlayerHistory>(
@@ -192,13 +247,13 @@ public class LegitimateClaims {
 			historyMap.put(p.getId(), p.getHistory().get(c));
 		}
 
-		fixedWeights = weights;
 		List<Player> f1 = getF1(players, historyMap);
 		List<Player> f1a = getF1a(players, historyMap);
 		List<Player> f2 = getF2(players, historyMap);
 		List<Player> f3 = getF3(players, historyMap);
 		List<Player> f4 = getF4(players, historyMap);
 		List<Player> f5 = getF5(players, historyMap);
+		List<Player> f6 = getF6(players, historyMap);
 
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
 		for (Player p : players) {
@@ -231,6 +286,10 @@ public class LegitimateClaims {
 			Player p = f5.get(i);
 			ranks.get(p.getId()).setF5(i);
 		}
+		for (int i = 0; i < f6.size(); i++) {
+			Player p = f6.get(i);
+			ranks.get(p.getId()).setF6(i);
+		}
 
 		final int nPlayers = players.size();
 
@@ -238,8 +297,8 @@ public class LegitimateClaims {
 		Collections.sort(rankList, new Comparator<BordaRank>() {
 			@Override
 			public int compare(BordaRank o1, BordaRank o2) {
-				double p1score = getScore(o1, nPlayers, weights);
-				double p2score = getScore(o2, nPlayers, weights);
+				double p1score = getScore(o1, nPlayers, fixedWeights);
+				double p2score = getScore(o2, nPlayers, fixedWeights);
 				return Double.compare(p2score, p1score);
 			}
 		});
@@ -248,7 +307,7 @@ public class LegitimateClaims {
 			double allocation = Math.min(p.getPlayer().getD(), poolSize);
 			session.insert(new Allocate(p.getPlayer(), allocation, t));
 			poolSize -= allocation;
-			logger.info(p + ": " + getScore(p, nPlayers, weights));
+			logger.info(p + ": " + getScore(p, nPlayers, fixedWeights));
 		}
 	}
 
@@ -259,6 +318,8 @@ public class LegitimateClaims {
 		score += weights[2] * (nPlayers - r.getF2());
 		score += weights[3] * (nPlayers - r.getF3());
 		score += weights[4] * (nPlayers - r.getF4());
+		score += weights[5] * (nPlayers - r.getF5());
+		score += weights[6] * (nPlayers - r.getF6());
 		return score;
 	}
 

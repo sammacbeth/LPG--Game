@@ -12,6 +12,8 @@ public class Player {
 	double d = 0;
 	double allocated = 0;
 	double appropriated = 0;
+	double alpha = 0.1;
+	double beta = 0.1;
 	Role role = Role.PROSUMER;
 
 	Map<Cluster, PlayerHistory> history = new HashMap<Cluster, PlayerHistory>();
@@ -21,16 +23,17 @@ public class Player {
 		this.id = aid;
 	}
 
-	public Player(UUID aid, double g, double q) {
+	public Player(UUID id, double alpha, double beta) {
 		super();
-		this.id = aid;
-		this.g = g;
-		this.q = q;
+		this.id = id;
+		this.alpha = alpha;
+		this.beta = beta;
 	}
 
 	@Override
 	public String toString() {
-		return "Player [id=" + id + ", role=" + role +", g=" + g + ", q=" + q + "]";
+		return "Player [id=" + id + ", role=" + role + ", g=" + g + ", q=" + q
+				+ "]";
 	}
 
 	public UUID getId() {
@@ -87,6 +90,14 @@ public class Player {
 
 	public Map<Cluster, PlayerHistory> getHistory() {
 		return history;
+	}
+
+	public double getAlpha() {
+		return alpha;
+	}
+
+	public double getBeta() {
+		return beta;
 	}
 
 	@Override

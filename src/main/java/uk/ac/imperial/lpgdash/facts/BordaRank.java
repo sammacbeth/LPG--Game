@@ -10,6 +10,7 @@ public class BordaRank {
 	int f3;
 	int f4;
 	int f5;
+	int f6;
 
 	public BordaRank(Player player) {
 		super();
@@ -89,15 +90,23 @@ public class BordaRank {
 		this.f5 = f5;
 	}
 
+	public int getF6() {
+		return f6;
+	}
+
+	public void setF6(int f6) {
+		this.f6 = f6;
+	}
+
 	public Player getPlayer() {
 		return player;
 	}
 
 	@Override
 	public String toString() {
-		return "BordaRank [player=" + player.getId() + ", f1=" + f1 + ", f1a="
-				+ f1a + ", f2=" + f2 + ", f3=" + f3 + ", f4=" + f4 + ", f5="
-				+ f5 + "]";
+		return "BordaRank [player=" + player + ", f1=" + f1 + ", f1a=" + f1a
+				+ ", f2=" + f2 + ", f3=" + f3 + ", f4=" + f4 + ", f5=" + f5
+				+ ", f6=" + f6 + "]";
 	}
 
 }
