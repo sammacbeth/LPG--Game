@@ -17,11 +17,16 @@ import uk.ac.imperial.lpgdash.facts.BordaRank;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.lpgdash.facts.PlayerHistory;
+import uk.ac.imperial.presage2.core.db.StorageService;
+import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
+import uk.ac.imperial.presage2.core.simulator.SimTime;
 
 public class LegitimateClaims {
 
 	private final static Logger logger = Logger
 			.getLogger(LegitimateClaims.class);
+
+	public static StorageService sto = null;
 
 	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1, 1 };
 
@@ -259,6 +264,9 @@ public class LegitimateClaims {
 		case LC_F6:
 			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 1, 0 };
 			break;
+		case LC_F7:
+			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 0, 1 };
+			break;
 		case LC_FIXED:
 		default:
 			fixedWeights = new double[] { 0.125, 0.125, 0.125, 0.125, 0.125,
@@ -271,6 +279,7 @@ public class LegitimateClaims {
 				players.size());
 		for (Player p : players) {
 			historyMap.put(p.getId(), p.getHistory().get(c));
+			storeHistory(p.getId(), p.getHistory().get(c));
 		}
 
 		List<Player> f1 = getF1(players, historyMap);
@@ -317,6 +326,7 @@ public class LegitimateClaims {
 			session.insert(new Allocate(p.getPlayer(), allocation, t));
 			poolSize -= allocation;
 			logger.info(p + ": " + getScore(p, nPlayers, fixedWeights));
+			storeRanks(p, nPlayers, fixedWeights);
 		}
 	}
 
@@ -331,6 +341,42 @@ public class LegitimateClaims {
 		score += weights[6] * (nPlayers - r.getF6());
 		score += weights[7] * (nPlayers - r.getF7());
 		return score;
+	}
+
+	private static void storeHistory(UUID id, PlayerHistory playerHistory) {
+		if (sto != null) {
+			TransientAgentState s = sto.getAgentState(id, SimTime.get()
+					.intValue());
+			s.setProperty("averageAllocated",
+					Double.toString(playerHistory.getAverageAllocated()));
+			s.setProperty("averageDemanded",
+					Double.toString(playerHistory.getAverageDemanded()));
+			s.setProperty("averageProvided",
+					Double.toString(playerHistory.getAverageProvided()));
+			s.setProperty("compliantRounds",
+					Integer.toString(playerHistory.getCompliantRounds()));
+			s.setProperty("roundsAllocated",
+					Integer.toString(playerHistory.getRoundsAllocated()));
+			s.setProperty("roundsAsHead",
+					Integer.toString(playerHistory.getRoundsAsHead()));
+			s.setProperty("roundsParticipanted",
+					Integer.toString(playerHistory.getRoundsParticipated()));
+		}
+	}
+
+	private static void storeRanks(BordaRank r, int n, double[] weights) {
+		if (sto != null) {
+			TransientAgentState s = sto.getAgentState(r.getPlayer().getId(),
+					SimTime.get().intValue());
+			s.setProperty("f1", Double.toString(weights[0] * (n - r.getF1())));
+			s.setProperty("f1a", Double.toString(weights[1] * (n - r.getF1a())));
+			s.setProperty("f2", Double.toString(weights[2] * (n - r.getF2())));
+			s.setProperty("f3", Double.toString(weights[3] * (n - r.getF3())));
+			s.setProperty("f4", Double.toString(weights[4] * (n - r.getF4())));
+			s.setProperty("f5", Double.toString(weights[5] * (n - r.getF5())));
+			s.setProperty("f6", Double.toString(weights[6] * (n - r.getF6())));
+			s.setProperty("f7", Double.toString(weights[7] * (n - r.getF7())));
+		}
 	}
 
 }

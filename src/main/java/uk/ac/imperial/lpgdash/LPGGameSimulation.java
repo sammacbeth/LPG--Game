@@ -10,6 +10,7 @@ import org.drools.runtime.StatefulKnowledgeSession;
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
+import uk.ac.imperial.lpgdash.allocators.LegitimateClaims;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -96,6 +97,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.graphDb);
+		LegitimateClaims.sto = this.graphDb;
 		Allocation c0All = Allocation.RANDOM;
 		for (Allocation a : Allocation.values()) {
 			if (clusters.equalsIgnoreCase(a.name())) {
