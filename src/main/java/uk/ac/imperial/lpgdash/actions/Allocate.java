@@ -2,13 +2,13 @@ package uk.ac.imperial.lpgdash.actions;
 
 import uk.ac.imperial.lpgdash.facts.Player;
 
-public class Allocate {
+public class Allocate extends TimestampedAction {
 
 	Player player;
 	double quantity;
 
-	public Allocate(Player p, double quantity) {
-		super();
+	public Allocate(Player p, double quantity, int time) {
+		super(time);
 		this.player = p;
 		this.quantity = quantity;
 	}
@@ -23,8 +23,8 @@ public class Allocate {
 
 	@Override
 	public String toString() {
-		return "Allocate [player=" + player.getId() + ", quantity=" + quantity
-				+ "]";
+		return "Allocate [player=" + player + ", quantity=" + quantity + ", t="
+				+ t + "]";
 	}
 
 }

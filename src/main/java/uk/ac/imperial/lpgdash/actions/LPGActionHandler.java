@@ -11,6 +11,7 @@ import org.drools.runtime.StatefulKnowledgeSession;
 
 import com.google.inject.Inject;
 
+import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.presage2.core.Action;
 import uk.ac.imperial.presage2.core.environment.ActionHandler;
@@ -24,6 +25,8 @@ public class LPGActionHandler implements ActionHandler {
 	final private Logger logger = Logger.getLogger(LPGActionHandler.class);
 	final StatefulKnowledgeSession session;
 	Map<UUID, Player> players = new HashMap<UUID, Player>();
+	final EnvironmentServiceProvider serviceProvider;
+	LPGService lpgservice = null;
 
 	@Inject
 	public LPGActionHandler(StatefulKnowledgeSession session,
@@ -31,12 +34,23 @@ public class LPGActionHandler implements ActionHandler {
 			throws UnavailableServiceException {
 		super();
 		this.session = session;
+		this.serviceProvider = serviceProvider;
+	}
+
+	LPGService getLPGService() {
+		if (this.lpgservice == null) {
+			try {
+				this.lpgservice = serviceProvider.getEnvironmentService(LPGService.class);
+			} catch (UnavailableServiceException e) {
+				logger.warn("Could not get lpg service", e);
+			}
+		}
+		return this.lpgservice;
 	}
 
 	@Override
 	public boolean canHandle(Action action) {
-		return (action instanceof Demand || action instanceof Provision
-				|| action instanceof Appropriate || action instanceof LeaveCluster);
+		return action instanceof PlayerAction;
 	}
 
 	private synchronized Player getPlayer(final UUID id) {
@@ -60,14 +74,11 @@ public class LPGActionHandler implements ActionHandler {
 	public Input handle(Action action, UUID actor)
 			throws ActionHandlingException {
 		Player p = getPlayer(actor);
-		if (action instanceof Demand) {
-			((Demand) action).player = p;
-		} else if (action instanceof Provision) {
-			((Provision) action).player = p;
-		} else if (action instanceof Appropriate) {
-			((Appropriate) action).player = p;
-		} else if (action instanceof LeaveCluster) {
-			((LeaveCluster) action).player = p;
+		if (action instanceof PlayerAction) {
+			((PlayerAction) action).setPlayer(p);
+		}
+		if (action instanceof TimestampedAction) {
+			((TimestampedAction) action).setT(getLPGService().getRoundNumber());
 		}
 		session.insert(action);
 		logger.debug("Handling: " + action);

@@ -183,7 +183,7 @@ public class LegitimateClaims {
 
 	public static void allocate(StatefulKnowledgeSession session,
 			List<Player> players, double poolSize, Cluster c,
-			final double[] weights) {
+			final double[] weights, int t) {
 
 		// map player histories
 		final Map<UUID, PlayerHistory> historyMap = new HashMap<UUID, PlayerHistory>(
@@ -246,7 +246,7 @@ public class LegitimateClaims {
 
 		for (BordaRank p : rankList) {
 			double allocation = Math.min(p.getPlayer().getD(), poolSize);
-			session.insert(new Allocate(p.getPlayer(), allocation));
+			session.insert(new Allocate(p.getPlayer(), allocation, t));
 			poolSize -= allocation;
 			logger.info(p + ": " + getScore(p, nPlayers, weights));
 		}

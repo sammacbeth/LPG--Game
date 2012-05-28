@@ -3,14 +3,14 @@ package uk.ac.imperial.lpgdash.actions;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.presage2.core.util.random.Random;
 
-public class Generate {
+public class Generate extends TimestampedAction {
 
 	public final Player player;
 	public final double g;
 	public final double q;
 
-	public Generate(Player player) {
-		super();
+	public Generate(Player player, int time) {
+		super(time);
 		this.player = player;
 		this.g = Random.randomDouble();
 		this.q = this.g + (Random.randomDouble() * (1 - this.g));

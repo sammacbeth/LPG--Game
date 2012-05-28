@@ -15,13 +15,13 @@ global org.drools.runtime.StatefulKnowledgeSession session
 rule "Random resource allocation"
 	no-loop
 	when
-		$r : Round( type == RoundType.DEMAND )
+		$r : Round( type == RoundType.DEMAND, $t : number )
 		$c : Cluster( allocationMethod == Allocation.RANDOM )
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
 		logger.info("Random order for resources " + $c);
-		RandomAllocator.allocate(session, $poolMembers, $pool.getQuantity());
+		RandomAllocator.allocate(session, $poolMembers, $pool.getQuantity(), $t );
 		modify( $pool ) {
 			setQuantity(0);
 		}

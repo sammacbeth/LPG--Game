@@ -17,7 +17,7 @@ public class RationAllocator {
 			.getLogger(RationAllocator.class);
 
 	public static void allocate(StatefulKnowledgeSession session,
-			List<Player> players, double poolSize) {
+			List<Player> players, double poolSize, int t) {
 		logger.info("Allocating...");
 		double playerCtr = players.size();
 		double allocation = poolSize / playerCtr;
@@ -30,7 +30,7 @@ public class RationAllocator {
 		});
 		for (Player p : players) {
 			//double toAllocate = Math.min(allocation, p.getD());
-			session.insert(new Allocate(p, allocation));
+			session.insert(new Allocate(p, allocation, t));
 			//playerCtr--;
 			//poolSize -= toAllocate;
 			//allocation = poolSize / playerCtr;

@@ -130,7 +130,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		if (this.game.getRound() == RoundType.APPROPRIATE) {
 			// generate new g and q
 			for (Player p : players) {
-				session.insert(new Generate(p));
+				session.insert(new Generate(p, game.getRoundNumber()+1));
 			}
 		}
 	}

@@ -19,7 +19,6 @@ import uk.ac.imperial.presage2.core.environment.EnvironmentSharedStateAccess;
 import uk.ac.imperial.presage2.core.event.EventBus;
 import uk.ac.imperial.presage2.core.event.EventListener;
 import uk.ac.imperial.presage2.core.simulator.EndOfTimeCycle;
-import uk.ac.imperial.presage2.core.simulator.SimTime;
 
 import com.google.inject.Inject;
 import com.google.inject.Singleton;
@@ -33,6 +32,7 @@ public class LPGService extends EnvironmentService {
 	Map<UUID, MemberOf> members = new HashMap<UUID, MemberOf>();
 
 	RoundType round = RoundType.INIT;
+	int roundNumber = 0;
 
 	@Inject
 	protected LPGService(EnvironmentSharedStateAccess sharedState,
@@ -46,11 +46,10 @@ public class LPGService extends EnvironmentService {
 	public void onIncrementTime(EndOfTimeCycle e) {
 		if (round == RoundType.DEMAND) {
 			round = RoundType.APPROPRIATE;
-			session.insert(new Round(SimTime.get().intValue(),
-					RoundType.APPROPRIATE));
+			session.insert(new Round(roundNumber, RoundType.APPROPRIATE));
 		} else {
 			round = RoundType.DEMAND;
-			session.insert(new Round(SimTime.get().intValue(), RoundType.DEMAND));
+			session.insert(new Round(++roundNumber, RoundType.DEMAND));
 		}
 		logger.info("Next round: " + round);
 	}
@@ -101,6 +100,10 @@ public class LPGService extends EnvironmentService {
 
 	public RoundType getRound() {
 		return round;
+	}
+
+	public int getRoundNumber() {
+		return roundNumber;
 	}
 
 	public double getG(UUID player) {

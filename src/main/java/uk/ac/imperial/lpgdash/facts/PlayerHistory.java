@@ -11,6 +11,7 @@ public class PlayerHistory {
 	double averageProvided = 0;
 	int roundsParticipated = 0;
 	int roundsAsHead = 0;
+	int compliantRounds = 0;
 
 	public PlayerHistory() {
 		super();
@@ -66,6 +67,14 @@ public class PlayerHistory {
 
 	public void setRoundsAsHead(int roundsAsHead) {
 		this.roundsAsHead = roundsAsHead;
+	}
+
+	public int getCompliantRounds() {
+		return compliantRounds;
+	}
+
+	public void setCompliantRounds(int compliantRounds) {
+		this.compliantRounds = compliantRounds;
 	}
 
 	@Override

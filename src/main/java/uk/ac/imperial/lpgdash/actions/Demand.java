@@ -1,11 +1,7 @@
 package uk.ac.imperial.lpgdash.actions;
 
-import uk.ac.imperial.lpgdash.facts.Player;
-import uk.ac.imperial.presage2.core.Action;
+public class Demand extends PlayerAction {
 
-public class Demand implements Action {
-
-	Player player;
 	double quantity;
 
 	public Demand(double quantity) {
@@ -14,11 +10,8 @@ public class Demand implements Action {
 
 	@Override
 	public String toString() {
-		return "Demand [player=" + player.getId() + ", quantity=" + quantity + "]";
-	}
-
-	public Player getPlayer() {
-		return player;
+		return "Demand [quantity=" + quantity + ", player=" + player + ", t="
+				+ t + "]";
 	}
 
 	public double getQuantity() {
