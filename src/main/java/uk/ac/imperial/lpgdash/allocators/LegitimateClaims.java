@@ -11,6 +11,7 @@ import java.util.UUID;
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
+import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
@@ -19,7 +20,6 @@ import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.lpgdash.facts.PlayerHistory;
 import uk.ac.imperial.presage2.core.db.StorageService;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
-import uk.ac.imperial.presage2.core.simulator.SimTime;
 
 public class LegitimateClaims {
 
@@ -27,6 +27,7 @@ public class LegitimateClaims {
 			.getLogger(LegitimateClaims.class);
 
 	public static StorageService sto = null;
+	public static LPGService game = null;
 
 	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1, 1 };
 
@@ -152,9 +153,9 @@ public class LegitimateClaims {
 					} else if (h2 == null) {
 						return -1;
 					}
-					return (h2.getRoundsParticipated()/* - h2.getRoundsAsHead()*/)
+					return (h2.getRoundsParticipated()/* - h2.getRoundsAsHead() */)
 							- (h1.getRoundsParticipated() /*- h1
-									.getRoundsAsHead()*/);
+															.getRoundsAsHead()*/);
 				}
 			});
 		}
@@ -353,8 +354,8 @@ public class LegitimateClaims {
 
 	private static void storeHistory(UUID id, PlayerHistory playerHistory) {
 		if (sto != null) {
-			TransientAgentState s = sto.getAgentState(id, SimTime.get()
-					.intValue());
+			TransientAgentState s = sto
+					.getAgentState(id, game.getRoundNumber());
 			s.setProperty("averageAllocated",
 					Double.toString(playerHistory.getAverageAllocated()));
 			s.setProperty("averageDemanded",
@@ -375,7 +376,7 @@ public class LegitimateClaims {
 	private static void storeRanks(BordaRank r, int n, double[] weights) {
 		if (sto != null) {
 			TransientAgentState s = sto.getAgentState(r.getPlayer().getId(),
-					SimTime.get().intValue());
+					game.getRoundNumber());
 			s.setProperty("f1", Double.toString(weights[0] * (n - r.getF1())));
 			s.setProperty("f1a", Double.toString(weights[1] * (n - r.getF1a())));
 			s.setProperty("f2", Double.toString(weights[2] * (n - r.getF2())));

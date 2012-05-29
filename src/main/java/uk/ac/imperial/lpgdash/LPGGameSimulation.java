@@ -70,6 +70,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	public void setServiceProvider(EnvironmentServiceProvider serviceProvider) {
 		try {
 			this.game = serviceProvider.getEnvironmentService(LPGService.class);
+			LegitimateClaims.game = this.game;
 		} catch (UnavailableServiceException e) {
 			logger.warn("", e);
 		}
