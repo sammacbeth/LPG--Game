@@ -10,7 +10,7 @@ public class Provision extends PlayerAction {
 
 	@Override
 	public String toString() {
-		return "Provision [quantity=" + quantity + ", player=" + player
+		return "Provision [quantity=" + quantity + ", player=" + player.getName()
 				+ ", t=" + t + "]";
 	}
 

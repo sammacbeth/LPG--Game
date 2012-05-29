@@ -152,9 +152,9 @@ public class LegitimateClaims {
 					} else if (h2 == null) {
 						return -1;
 					}
-					return (h2.getRoundsParticipated() - h2.getRoundsAsHead())
-							- (h1.getRoundsParticipated() - h1
-									.getRoundsAsHead());
+					return (h2.getRoundsParticipated()/* - h2.getRoundsAsHead()*/)
+							- (h1.getRoundsParticipated() /*- h1
+									.getRoundsAsHead()*/);
 				}
 			});
 		}

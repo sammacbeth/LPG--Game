@@ -110,7 +110,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
-			Player p = new Player(pid, alpha, beta);
+			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
 			session.insert(new JoinCluster(p, c));
@@ -119,7 +119,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta));
-			Player p = new Player(pid, alpha, beta);
+			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
 			session.insert(new JoinCluster(p, c));

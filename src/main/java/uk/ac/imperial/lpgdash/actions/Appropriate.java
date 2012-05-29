@@ -10,7 +10,7 @@ public class Appropriate extends PlayerAction {
 
 	@Override
 	public String toString() {
-		return "Appropriate [quantity=" + quantity + ", player=" + player
+		return "Appropriate [quantity=" + quantity + ", player=" + player.getName()
 				+ ", t=" + t + "]";
 	}
 

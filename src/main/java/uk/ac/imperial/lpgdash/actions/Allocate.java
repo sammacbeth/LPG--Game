@@ -23,7 +23,7 @@ public class Allocate extends TimestampedAction {
 
 	@Override
 	public String toString() {
-		return "Allocate [player=" + player + ", quantity=" + quantity + ", t="
+		return "Allocate [player=" + player.getName() + ", quantity=" + quantity + ", t="
 				+ t + "]";
 	}
 

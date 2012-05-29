@@ -7,6 +7,8 @@ import java.util.UUID;
 public class Player {
 
 	UUID id;
+	final String name;
+	String type = "C";
 	double g = 0;
 	double q = 0;
 	double d = 0;
@@ -21,23 +23,30 @@ public class Player {
 	public Player(UUID aid) {
 		super();
 		this.id = aid;
+		this.name = "n/a";
 	}
 
-	public Player(UUID id, double alpha, double beta) {
+	public Player(UUID id, String name, String type, double alpha, double beta) {
 		super();
 		this.id = id;
+		this.name = name;
+		this.type = type;
 		this.alpha = alpha;
 		this.beta = beta;
 	}
 
 	@Override
 	public String toString() {
-		return "Player [id=" + id + ", role=" + role + ", g=" + g + ", q=" + q
+		return "Player [" + name + ", type=" + type +", role=" + role + ", g=" + g + ", q=" + q
 				+ "]";
 	}
 
 	public UUID getId() {
 		return id;
+	}
+
+	public String getName() {
+		return name;
 	}
 
 	public double getG() {

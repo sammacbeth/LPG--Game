@@ -30,7 +30,7 @@ public class Generate extends TimestampedAction {
 
 	@Override
 	public String toString() {
-		return "Generate [player=" + player + ", g=" + g + ", q=" + q + ", t="
+		return "Generate [player=" + player.getName() + ", g=" + g + ", q=" + q + ", t="
 				+ t + "]";
 	}
 

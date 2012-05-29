@@ -10,7 +10,7 @@ public class Demand extends PlayerAction {
 
 	@Override
 	public String toString() {
-		return "Demand [quantity=" + quantity + ", player=" + player + ", t="
+		return "Demand [quantity=" + quantity + ", player=" + player.getName() + ", t="
 				+ t + "]";
 	}
 
