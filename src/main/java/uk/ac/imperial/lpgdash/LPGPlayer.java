@@ -87,13 +87,12 @@ public class LPGPlayer extends AbstractParticipant {
 			return;
 		}
 
-		int time = SimTime.get().intValue();
 		if (game.getRound() == RoundType.DEMAND) {
-			if (time > 1) {
+			if (game.getRoundNumber() > 1) {
 				// determine utility gained from last round
 				calculateScores();
 			}
-			if (this.satisfaction < 0.1 && time > 20 && (time + 5) % 40 < 2) {
+			if (this.satisfaction < 0.1 && game.getRoundNumber() % 20 == 0) {
 				leaveCluster();
 			} else {
 
