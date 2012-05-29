@@ -248,9 +248,9 @@ rule "Cluster head event"
 end
 
 rule "Unassign cluster head after 20 rounds"
-	duration( 40s )
 	when
 		$p : Player( role == Role.HEAD )
+		$h : List( size > 0, size % 20 == 0 ) from collect( IsHead( player == $p ) over window:time( 50s ) )
 	then
 		modify($p) {
 			setRole( Role.PROSUMER )
@@ -281,9 +281,9 @@ rule "Calculate round fairness"
 		$c : Cluster( $fairness : fairnessData )
 		$members : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 		$allocations : List(size > 0) from accumulate( 
-			Demand( this coincides $r, player memberOf $members, $p : player, $d : quantity, quantity > 0)
+			Demand( $t : t, player memberOf $members, $p : player, $d : quantity, quantity > 0)
 			and
-			Allocate( this after $r, player == $p, $a : quantity ),
+			Allocate( t == $t, player == $p, $a : quantity ),
 			collectList( $a / $d )
 		)
 	then
