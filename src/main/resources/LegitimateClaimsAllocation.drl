@@ -11,10 +11,24 @@ import uk.ac.imperial.lpgdash.allocators.LegitimateClaims
 
 global org.apache.log4j.Logger logger
 
+query lcCluster(Cluster c)
+	Cluster( this == c, allocationMethod in (
+		Allocation.LC_FIXED,
+		Allocation.LC_F1,
+		Allocation.LC_F1a,
+		Allocation.LC_F2,
+		Allocation.LC_F3,
+		Allocation.LC_F4,
+		Allocation.LC_F5,
+		Allocation.LC_F6,
+		Allocation.LC_F7 ) )
+end
+
 rule "Create PlayerHistory"
 	salience 2
 	when
 		MemberOf( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		Player( this == $p, getHistory()[$c] == null )
 	then
 		modify( $p ) {
@@ -25,6 +39,7 @@ end
 rule "Update allocation history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Allocate( player == $p, this after $joined, $q : quantity ), 
@@ -39,6 +54,7 @@ end
 rule "Update allocation count history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Allocate( player == $p, this after $joined, $q : quantity, quantity > 0 ), 
@@ -53,6 +69,7 @@ end
 rule "Update demand history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Demand( player == $p, this after $joined, $q : quantity ), 
@@ -67,6 +84,7 @@ end
 rule "Update provision history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( Provision( player == $p, this after $joined, $q : quantity ), 
@@ -84,6 +102,7 @@ rule "Count rounds as head"
 	no-loop
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
+		lcCluster( $c ;)
 		MemberOf( player == $p, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $p )
 		accumulate( $e : IsHead( player == $p, cluster == $c, this after $joined ), 
@@ -98,6 +117,7 @@ end
 rule "Count compliant rounds"
 	when
 		$joined : JoinCluster( $player : player, $c : cluster, $tJoined : t )
+		lcCluster( $c ;)
 		MemberOf( player == $player, cluster == $c )
 		not LeaveCluster( cluster == $c, player == $player )
 		accumulate(
@@ -122,6 +142,7 @@ end
 rule "Calculate satisfaction from previous round"
 	when
 		MemberOf( $player : player, $c : cluster )
+		lcCluster( $c ;)
 		Round( $t : number, type == RoundType.DEMAND )
 		Generate( $g : g, $q : q, player == $player, t == $t-1 )
 		Demand( $d : quantity, player == $player, t == $t-1 )
@@ -145,16 +166,8 @@ rule "LC resource allocation"
 	when
 		$r : Round( type == RoundType.DEMAND, $t : number )
 		not Processed( $r ;)
-		$c : Cluster( $method : allocationMethod, 
-					allocationMethod == Allocation.LC_FIXED
-					|| allocationMethod == Allocation.LC_F1
-					|| allocationMethod == Allocation.LC_F1a
-					|| allocationMethod == Allocation.LC_F2
-					|| allocationMethod == Allocation.LC_F3
-					|| allocationMethod == Allocation.LC_F4
-					|| allocationMethod == Allocation.LC_F5
-					|| allocationMethod == Allocation.LC_F6
-					|| allocationMethod == Allocation.LC_F7 )
+		$c : Cluster( $method : allocationMethod )
+		lcCluster( $c ;)
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
