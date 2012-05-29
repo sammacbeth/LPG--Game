@@ -75,7 +75,17 @@ rule "Discard Rounds"
 	salience 1000
 	when
 		$r : Round( $n : number )
-		$r2 : Round( number <= $n, this != $r )
+		$r2 : Round( number < $n )
+	then
+		logger.info($r);
+		retract( $r2 );
+end
+
+rule "Discard Rounds intermediate"
+	salience 1000
+	when
+		$r : Round( $n : number, type == RoundType.APPROPRIATE )
+		$r2 : Round( number == $n, type == RoundType.DEMAND )
 	then
 		logger.info($r);
 		retract( $r2 );

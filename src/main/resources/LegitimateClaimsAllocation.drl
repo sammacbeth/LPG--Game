@@ -151,7 +151,10 @@ rule "LC resource allocation"
 					|| allocationMethod == Allocation.LC_F1a
 					|| allocationMethod == Allocation.LC_F2
 					|| allocationMethod == Allocation.LC_F3
-					|| allocationMethod == Allocation.LC_F4 )
+					|| allocationMethod == Allocation.LC_F4
+					|| allocationMethod == Allocation.LC_F5
+					|| allocationMethod == Allocation.LC_F6
+					|| allocationMethod == Allocation.LC_F7 )
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then

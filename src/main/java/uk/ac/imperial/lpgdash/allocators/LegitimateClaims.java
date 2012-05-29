@@ -282,13 +282,22 @@ public class LegitimateClaims {
 			storeHistory(p.getId(), p.getHistory().get(c));
 		}
 
+		players = new ArrayList<Player>(players);
+		Collections.shuffle(players);
 		List<Player> f1 = getF1(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f1a = getF1a(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f2 = getF2(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f3 = getF3(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f4 = getF4(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f5 = getF5(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f6 = getF6(players, historyMap);
+		Collections.shuffle(players);
 		List<Player> f7 = getF7(players, historyMap);
 
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
@@ -298,7 +307,7 @@ public class LegitimateClaims {
 		ArrayList<BordaRank> rankList = new ArrayList<BordaRank>(ranks.values());
 
 		// associate ranks with agents
-		for (int i = 0; i < f1.size(); i++) {
+		for (int i = 0; i < players.size(); i++) {
 			ranks.get(f1.get(i).getId()).setF1(i);
 			ranks.get(f1a.get(i).getId()).setF1a(i);
 			ranks.get(f2.get(i).getId()).setF2(i);
