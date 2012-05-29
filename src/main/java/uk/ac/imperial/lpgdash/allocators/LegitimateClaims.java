@@ -83,27 +83,26 @@ public class LegitimateClaims {
 
 	public static List<Player> getF2(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
-		// f2: sort by average demand DESC.
+		// f2: sort by average demand ASC.
 		ArrayList<Player> f2 = new ArrayList<Player>(players);
 		if (fixedWeights[2] != 0.0) {
-			Collections.sort(f2,
-					Collections.reverseOrder(new Comparator<Player>() {
-						@Override
-						public int compare(Player o1, Player o2) {
-							// compare by average allocation
-							PlayerHistory h1 = historyMap.get(o1.getId());
-							PlayerHistory h2 = historyMap.get(o2.getId());
-							if (h1 == null && h2 == null)
-								return 0;
-							else if (h1 == null) {
-								return 1;
-							} else if (h2 == null) {
-								return -1;
-							}
-							return Double.compare(h1.getAverageDemanded(),
-									h2.getAverageDemanded());
-						}
-					}));
+			Collections.sort(f2, new Comparator<Player>() {
+				@Override
+				public int compare(Player o1, Player o2) {
+					// compare by average allocation
+					PlayerHistory h1 = historyMap.get(o1.getId());
+					PlayerHistory h2 = historyMap.get(o2.getId());
+					if (h1 == null && h2 == null)
+						return 0;
+					else if (h1 == null) {
+						return 1;
+					} else if (h2 == null) {
+						return -1;
+					}
+					return Double.compare(h1.getAverageDemanded(),
+							h2.getAverageDemanded());
+				}
+			});
 		}
 		return f2;
 	}
