@@ -56,6 +56,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	public double alpha;
 	@Parameter(name = "beta")
 	public double beta;
+	@Parameter(name = "seed")
+	public int seed;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -94,11 +96,12 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 
 	@Override
 	protected void addToScenario(Scenario s) {
+		Random.seed = this.seed;
 		s.addTimeDriven(this);
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
-		session.setGlobal("storage", this.graphDb);
-		LegitimateClaims.sto = this.graphDb;
+		session.setGlobal("storage", this.storage);
+		LegitimateClaims.sto = this.storage;
 		Allocation c0All = Allocation.RANDOM;
 		for (Allocation a : Allocation.values()) {
 			if (clusters.equalsIgnoreCase(a.name())) {
