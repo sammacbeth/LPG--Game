@@ -110,7 +110,7 @@ public class LegitimateClaims {
 
 	public static List<Player> getF3(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
-		// f2: sort by average demand DESC.
+		// f3: sort by average provision DESC.
 		ArrayList<Player> f3 = new ArrayList<Player>(players);
 		if (fixedWeights[3] != 0.0) {
 			Collections.sort(f3,
@@ -153,9 +153,8 @@ public class LegitimateClaims {
 					} else if (h2 == null) {
 						return -1;
 					}
-					return (h2.getRoundsParticipated()/* - h2.getRoundsAsHead() */)
-							- (h1.getRoundsParticipated() /*- h1
-															.getRoundsAsHead()*/);
+					return h2.getRoundsParticipated()
+							- h1.getRoundsParticipated();
 				}
 			});
 		}
@@ -214,7 +213,7 @@ public class LegitimateClaims {
 
 	public static List<Player> getF7(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
-		// f7: sort by satisfaction DESC
+		// f7: sort by satisfaction ASC
 		ArrayList<Player> f7 = new ArrayList<Player>(players);
 		if (fixedWeights[7] != 0.0) {
 			Collections.sort(f7, new Comparator<Player>() {
@@ -230,8 +229,8 @@ public class LegitimateClaims {
 					} else if (h2 == null) {
 						return -1;
 					}
-					return Double.compare(h2.getSatisfaction(),
-							h1.getSatisfaction());
+					return Double.compare(h1.getSatisfaction(),
+							h2.getSatisfaction());
 				}
 			});
 		}
