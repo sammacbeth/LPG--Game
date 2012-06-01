@@ -10,6 +10,11 @@ abstract class PlayerAction extends TimestampedAction {
 		super();
 	}
 
+	PlayerAction(int t, Player player) {
+		super(t);
+		this.player = player;
+	}
+
 	public Player getPlayer() {
 		return player;
 	}
