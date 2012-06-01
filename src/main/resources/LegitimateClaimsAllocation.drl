@@ -21,7 +21,8 @@ query lcCluster(Cluster c)
 		Allocation.LC_F4,
 		Allocation.LC_F5,
 		Allocation.LC_F6,
-		Allocation.LC_F7 ) )
+		Allocation.LC_F7,
+		Allocation.LC_SO ) )
 end
 
 rule "Create PlayerHistory"

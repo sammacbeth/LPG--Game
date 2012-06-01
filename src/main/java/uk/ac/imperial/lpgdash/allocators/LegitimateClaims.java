@@ -1,6 +1,7 @@
 package uk.ac.imperial.lpgdash.allocators;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -19,6 +20,7 @@ import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
 import uk.ac.imperial.lpgdash.facts.PlayerHistory;
 import uk.ac.imperial.presage2.core.db.StorageService;
+import uk.ac.imperial.presage2.core.db.persistent.PersistentEnvironment;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 
 public class LegitimateClaims {
@@ -29,7 +31,8 @@ public class LegitimateClaims {
 	public static StorageService sto = null;
 	public static LPGService game = null;
 
-	private static double[] fixedWeights = { 1, 1, 1, 1, 1, 1, 1 };
+	private static double[] fixedWeights = new double[] { 0.125, 0.125, 0.125,
+			0.125, 0.125, 0.125, 0.125, 0.125 };
 
 	public static List<Player> getF1(final List<Player> players,
 			final Map<UUID, PlayerHistory> historyMap) {
@@ -266,6 +269,8 @@ public class LegitimateClaims {
 		case LC_F7:
 			fixedWeights = new double[] { 0, 0, 0, 0, 0, 0, 0, 1 };
 			break;
+		case LC_SO:
+			break;
 		case LC_FIXED:
 		default:
 			fixedWeights = new double[] { 0.125, 0.125, 0.125, 0.125, 0.125,
@@ -336,6 +341,94 @@ public class LegitimateClaims {
 			logger.info(p + ": " + getScore(p, nPlayers, fixedWeights));
 			storeRanks(p, nPlayers, fixedWeights);
 		}
+
+		if (method == Allocation.LC_SO) {
+			double[] fBorda = new double[8];
+			Arrays.fill(fBorda, 0.0);
+
+			// calculate Borda(f, C)
+			for (BordaRank p : rankList) {
+				List<FunctionRank> playerRanks = new ArrayList<LegitimateClaims.FunctionRank>();
+				playerRanks.add(new FunctionRank(Function.F1, p.getF1()));
+				playerRanks.add(new FunctionRank(Function.F1a, p.getF1a()));
+				playerRanks.add(new FunctionRank(Function.F2, p.getF2()));
+				playerRanks.add(new FunctionRank(Function.F3, p.getF3()));
+				playerRanks.add(new FunctionRank(Function.F4, p.getF4()));
+				playerRanks.add(new FunctionRank(Function.F5, p.getF5()));
+				playerRanks.add(new FunctionRank(Function.F6, p.getF6()));
+				playerRanks.add(new FunctionRank(Function.F7, p.getF7()));
+
+				Collections.sort(playerRanks);
+
+				int bordaAvailable = 0;
+				int lastIndex = 0;
+				int lastRank = 0;
+				int score = Function.values().length;
+				for (int i = 0; i <= playerRanks.size(); i++) {
+					FunctionRank f;
+					if (i == playerRanks.size())
+						// stub functionrank for last iteration
+						f = new FunctionRank(null, -1);
+					else
+						f = playerRanks.get(i);
+
+					if (f.rank != lastRank) {
+						// shared score between fns
+						int fnCount = i - lastIndex;
+						double bordaPerFn = ((double) bordaAvailable) / fnCount;
+						for (int j = lastIndex; j < i; j++) {
+							FunctionRank fAdd = playerRanks.get(j);
+							fBorda[fAdd.f.ordinal()] += bordaPerFn;
+						}
+
+						bordaAvailable = score;
+						lastIndex = i;
+						lastRank = f.rank;
+					} else {
+						bordaAvailable += score;
+					}
+					score--;
+				}
+
+			}
+			logger.info("Borda(f, C) = " + Arrays.toString(fBorda));
+
+			// update weights
+			double averageBorda = 0;
+			double totalBorda = 0;
+			for (int i = 0; i < fBorda.length; i++) {
+				totalBorda += fBorda[i];
+			}
+			averageBorda = totalBorda / fBorda.length;
+			for (int i = 0; i < fBorda.length; i++) {
+				fixedWeights[i] = fixedWeights[i]
+						+ (fixedWeights[i] * (fBorda[i] - averageBorda) / totalBorda);
+			}
+			// normalise weights
+			double weightsSum = 0.0;
+			for (int i = 0; i < fixedWeights.length; i++) {
+				weightsSum += fixedWeights[i];
+			}
+			for (int i = 0; i < fixedWeights.length; i++) {
+				fixedWeights[i] *= 1 / weightsSum;
+			}
+
+			/*int[] fHd = new int[8];
+			Arrays.fill(fHd, 0);
+			for (Function f : Function.values()) {
+				for (int i = 0; i < f1.size(); i++) {
+					BordaRank r = rankList.get(i);
+					// TODO: use each function.
+					Player p = f1.get(i);
+					if (r.getPlayer().getId().equals(p.getId())) {
+						fHd[f.ordinal()]++;
+					}
+				}
+			}*/
+
+			logger.info("w*(t) = " + Arrays.toString(fixedWeights));
+			storeWeights(fixedWeights);
+		}
 	}
 
 	private static double getScore(BordaRank r, int nPlayers, double[] weights) {
@@ -385,6 +478,43 @@ public class LegitimateClaims {
 			s.setProperty("f6", Double.toString(weights[6] * (n - r.getF6())));
 			s.setProperty("f7", Double.toString(weights[7] * (n - r.getF7())));
 		}
+	}
+
+	private static void storeWeights(double[] weights) {
+		if (sto != null) {
+			PersistentEnvironment e = sto.getSimulation().getEnvironment();
+			int round = game.getRoundNumber();
+			for (Function f : Function.values()) {
+				e.setProperty("w_" + f, round,
+						Double.toString(weights[f.ordinal()]));
+			}
+		}
+	}
+
+	private enum Function {
+		F1, F1a, F2, F3, F4, F5, F6, F7
+	};
+
+	private static class FunctionRank implements Comparable<FunctionRank> {
+		Function f;
+		int rank;
+
+		FunctionRank(Function f, int rank) {
+			super();
+			this.f = f;
+			this.rank = rank;
+		}
+
+		@Override
+		public int compareTo(FunctionRank o) {
+			return rank - o.rank;
+		}
+
+		@Override
+		public String toString() {
+			return "FunctionRank [f=" + f + ", rank=" + rank + "]";
+		}
+
 	}
 
 }

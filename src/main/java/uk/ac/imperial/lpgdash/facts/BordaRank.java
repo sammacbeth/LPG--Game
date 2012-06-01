@@ -113,9 +113,9 @@ public class BordaRank {
 
 	@Override
 	public String toString() {
-		return "BordaRank [player=" + player.getName() + ", f1=" + f1 + ", f1a="
-				+ f1a + ", f2=" + f2 + ", f3=" + f3 + ", f4=" + f4 + ", f5="
-				+ f5 + ", f6=" + f6 + ", f7=" + f7 + "]";
+		return "BordaRank [player=" + player.getName() + ", f1=" + f1
+				+ ", f1a=" + f1a + ", f2=" + f2 + ", f3=" + f3 + ", f4=" + f4
+				+ ", f5=" + f5 + ", f6=" + f6 + ", f7=" + f7 + "]";
 	}
 
 }
