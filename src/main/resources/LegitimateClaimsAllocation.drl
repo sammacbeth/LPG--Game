@@ -171,9 +171,10 @@ rule "LC resource allocation"
 		lcCluster( $c ;)
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+		$lc : LegitimateClaims( c == $c )
 	then
 		logger.info( $method +" allocation for resources " + $c);
-		LegitimateClaims.allocate(session, $poolMembers, $pool.getQuantity(), $c, $method, $t );
+		$lc.allocate($poolMembers, $pool.getQuantity(), $t );
 		modify( $pool ) {
 			setQuantity(0);
 		}

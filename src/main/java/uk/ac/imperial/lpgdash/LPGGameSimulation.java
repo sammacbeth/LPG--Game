@@ -72,7 +72,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	public void setServiceProvider(EnvironmentServiceProvider serviceProvider) {
 		try {
 			this.game = serviceProvider.getEnvironmentService(LPGService.class);
-			LegitimateClaims.game = this.game;
 		} catch (UnavailableServiceException e) {
 			logger.warn("", e);
 		}
@@ -101,7 +100,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.storage);
-		LegitimateClaims.sto = this.storage;
 		Allocation c0All = Allocation.RANDOM;
 		for (Allocation a : Allocation.values()) {
 			if (clusters.equalsIgnoreCase(a.name())) {
@@ -111,6 +109,11 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		}
 		Cluster c = new Cluster(0, c0All);
 		session.insert(c);
+		if (c.isLC()) {
+			LegitimateClaims lc = new LegitimateClaims(c, session, this.game);
+			lc.setStorage(storage);
+			session.insert(lc);
+		}
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
