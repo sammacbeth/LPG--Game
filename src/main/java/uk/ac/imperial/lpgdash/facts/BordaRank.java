@@ -1,17 +1,15 @@
 package uk.ac.imperial.lpgdash.facts;
 
+import java.util.HashMap;
+import java.util.Map;
+
+import uk.ac.imperial.lpgdash.allocators.canons.Canon;
+
 public class BordaRank {
 
 	final Player player;
 
-	int f1;
-	int f1a;
-	int f2;
-	int f3;
-	int f4;
-	int f5;
-	int f6;
-	int f7;
+	Map<Canon, Integer> functionRanks = new HashMap<Canon, Integer>();
 
 	public BordaRank(Player player) {
 		super();
@@ -43,68 +41,16 @@ public class BordaRank {
 		return true;
 	}
 
-	public int getF1() {
-		return f1;
+	public int get(Canon c) {
+		Integer rank = functionRanks.get(c);
+		if (rank == null)
+			return 0;
+		else
+			return rank;
 	}
 
-	public void setF1(int f1) {
-		this.f1 = f1;
-	}
-
-	public int getF1a() {
-		return f1a;
-	}
-
-	public void setF1a(int f1a) {
-		this.f1a = f1a;
-	}
-
-	public int getF2() {
-		return f2;
-	}
-
-	public void setF2(int f2) {
-		this.f2 = f2;
-	}
-
-	public int getF3() {
-		return f3;
-	}
-
-	public void setF3(int f3) {
-		this.f3 = f3;
-	}
-
-	public int getF4() {
-		return f4;
-	}
-
-	public void setF4(int f4) {
-		this.f4 = f4;
-	}
-
-	public int getF5() {
-		return f5;
-	}
-
-	public void setF5(int f5) {
-		this.f5 = f5;
-	}
-
-	public int getF6() {
-		return f6;
-	}
-
-	public void setF6(int f6) {
-		this.f6 = f6;
-	}
-
-	public int getF7() {
-		return f7;
-	}
-
-	public void setF7(int f7) {
-		this.f7 = f7;
+	public void set(Canon c, Integer rank) {
+		functionRanks.put(c, rank);
 	}
 
 	public Player getPlayer() {
@@ -113,9 +59,8 @@ public class BordaRank {
 
 	@Override
 	public String toString() {
-		return "BordaRank [player=" + player.getName() + ", f1=" + f1
-				+ ", f1a=" + f1a + ", f2=" + f2 + ", f3=" + f3 + ", f4=" + f4
-				+ ", f5=" + f5 + ", f6=" + f6 + ", f7=" + f7 + "]";
+		return "BordaRank [player=" + player.getName() + ", ranks="
+				+ functionRanks.toString() + "]";
 	}
 
 }

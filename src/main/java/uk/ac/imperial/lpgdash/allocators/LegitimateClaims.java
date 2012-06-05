@@ -14,6 +14,16 @@ import org.drools.runtime.StatefulKnowledgeSession;
 
 import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
+import uk.ac.imperial.lpgdash.allocators.canons.F1;
+import uk.ac.imperial.lpgdash.allocators.canons.F1a;
+import uk.ac.imperial.lpgdash.allocators.canons.F2;
+import uk.ac.imperial.lpgdash.allocators.canons.F3;
+import uk.ac.imperial.lpgdash.allocators.canons.F4;
+import uk.ac.imperial.lpgdash.allocators.canons.F5;
+import uk.ac.imperial.lpgdash.allocators.canons.F6;
+import uk.ac.imperial.lpgdash.allocators.canons.F7;
+import uk.ac.imperial.lpgdash.allocators.canons.Canon;
+import uk.ac.imperial.lpgdash.allocators.canons.LegitimateClaimsCanon;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
 import uk.ac.imperial.lpgdash.facts.Cluster;
@@ -34,210 +44,40 @@ public class LegitimateClaims {
 	private static double[] fixedWeights = new double[] { 0.125, 0.125, 0.125,
 			0.125, 0.125, 0.125, 0.125, 0.125 };
 
-	public static List<Player> getF1(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f1: sort by average allocation ASC.
-		ArrayList<Player> f1 = new ArrayList<Player>(players);
-		if (fixedWeights[0] != 0.0) {
-			Collections.sort(f1, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return Double.compare(h1.getAverageAllocated(),
-							h2.getAverageAllocated());
-				}
-			});
+	private static List<Player> getFunctionRanking(Canon f, Cluster c,
+			List<Player> players) {
+		List<Player> rankedPlayers = new ArrayList<Player>(players);
+		Collections.shuffle(rankedPlayers);
+		LegitimateClaimsCanon canon;
+		switch (f) {
+		case F1:
+			canon = new F1(c);
+			break;
+		case F1a:
+			canon = new F1a(c);
+			break;
+		case F2:
+			canon = new F2(c);
+			break;
+		case F3:
+			canon = new F3(c);
+			break;
+		case F4:
+			canon = new F4(c);
+			break;
+		case F5:
+			canon = new F5(c);
+			break;
+		case F6:
+			canon = new F6(c);
+			break;
+		case F7:
+		default:
+			canon = new F7(c);
+			break;
 		}
-		return f1;
-	}
-
-	public static List<Player> getF1a(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f1a: sort by rounds with allocation ASC
-		ArrayList<Player> f1a = new ArrayList<Player>(players);
-		if (fixedWeights[1] != 0.0) {
-			Collections.sort(f1a, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return h1.getRoundsAllocated() - h2.getRoundsAllocated();
-				}
-			});
-		}
-		return f1a;
-	}
-
-	public static List<Player> getF2(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f2: sort by average demand ASC.
-		ArrayList<Player> f2 = new ArrayList<Player>(players);
-		if (fixedWeights[2] != 0.0) {
-			Collections.sort(f2, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return Double.compare(h1.getAverageDemanded(),
-							h2.getAverageDemanded());
-				}
-			});
-		}
-		return f2;
-	}
-
-	public static List<Player> getF3(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f3: sort by average provision DESC.
-		ArrayList<Player> f3 = new ArrayList<Player>(players);
-		if (fixedWeights[3] != 0.0) {
-			Collections.sort(f3,
-					Collections.reverseOrder(new Comparator<Player>() {
-						@Override
-						public int compare(Player o1, Player o2) {
-							// compare by average allocation
-							PlayerHistory h1 = historyMap.get(o1.getId());
-							PlayerHistory h2 = historyMap.get(o2.getId());
-							if (h1 == null && h2 == null)
-								return 0;
-							else if (h1 == null) {
-								return 1;
-							} else if (h2 == null) {
-								return -1;
-							}
-							return Double.compare(h1.getAverageProvided(),
-									h2.getAverageProvided());
-						}
-					}));
-		}
-		return f3;
-	}
-
-	public static List<Player> getF4(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f4: sort by no of cycles in cluster DESC
-		ArrayList<Player> f4 = new ArrayList<Player>(players);
-		if (fixedWeights[4] != 0.0) {
-			Collections.sort(f4, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return h2.getRoundsParticipated()
-							- h1.getRoundsParticipated();
-				}
-			});
-		}
-		return f4;
-	}
-
-	public static List<Player> getF5(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f5: sort by no of cycles as head DESC
-		ArrayList<Player> f5 = new ArrayList<Player>(players);
-		if (fixedWeights[5] != 0.0) {
-			Collections.sort(f5, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return h2.getRoundsAsHead() - h1.getRoundsAsHead();
-				}
-			});
-		}
-		return f5;
-	}
-
-	public static List<Player> getF6(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f6: sort by no of compliant cycles DESC
-		ArrayList<Player> f6 = new ArrayList<Player>(players);
-		if (fixedWeights[6] != 0.0) {
-			Collections.sort(f6, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return h2.getCompliantRounds() - h1.getCompliantRounds();
-				}
-			});
-		}
-		return f6;
-	}
-
-	public static List<Player> getF7(final List<Player> players,
-			final Map<UUID, PlayerHistory> historyMap) {
-		// f7: sort by satisfaction ASC
-		ArrayList<Player> f7 = new ArrayList<Player>(players);
-		if (fixedWeights[7] != 0.0) {
-			Collections.sort(f7, new Comparator<Player>() {
-				@Override
-				public int compare(Player o1, Player o2) {
-					// compare by average allocation
-					PlayerHistory h1 = historyMap.get(o1.getId());
-					PlayerHistory h2 = historyMap.get(o2.getId());
-					if (h1 == null && h2 == null)
-						return 0;
-					else if (h1 == null) {
-						return 1;
-					} else if (h2 == null) {
-						return -1;
-					}
-					return Double.compare(h1.getSatisfaction(),
-							h2.getSatisfaction());
-				}
-			});
-		}
-		return f7;
+		Collections.sort(rankedPlayers, canon);
+		return rankedPlayers;
 	}
 
 	public static void allocate(StatefulKnowledgeSession session,
@@ -286,46 +126,35 @@ public class LegitimateClaims {
 			storeHistory(p.getId(), p.getHistory().get(c));
 		}
 
+		Map<Canon, List<Player>> rankOrders = new HashMap<Canon, List<Player>>();
 		players = new ArrayList<Player>(players);
-		Collections.shuffle(players);
-		List<Player> f1 = getF1(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f1a = getF1a(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f2 = getF2(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f3 = getF3(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f4 = getF4(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f5 = getF5(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f6 = getF6(players, historyMap);
-		Collections.shuffle(players);
-		List<Player> f7 = getF7(players, historyMap);
+		rankOrders.put(Canon.F1, getFunctionRanking(Canon.F1, c, players));
+		rankOrders.put(Canon.F1a, getFunctionRanking(Canon.F1a, c, players));
+		rankOrders.put(Canon.F2, getFunctionRanking(Canon.F2, c, players));
+		rankOrders.put(Canon.F3, getFunctionRanking(Canon.F4, c, players));
+		rankOrders.put(Canon.F4, getFunctionRanking(Canon.F4, c, players));
+		rankOrders.put(Canon.F5, getFunctionRanking(Canon.F5, c, players));
+		rankOrders.put(Canon.F6, getFunctionRanking(Canon.F6, c, players));
+		rankOrders.put(Canon.F7, getFunctionRanking(Canon.F7, c, players));
 
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
 		for (Player p : players) {
 			ranks.put(p.getId(), new BordaRank(p));
 		}
-		ArrayList<BordaRank> rankList = new ArrayList<BordaRank>(ranks.values());
+		ArrayList<BordaRank> bordaPtq = new ArrayList<BordaRank>(ranks.values());
 
 		// associate ranks with agents
 		for (int i = 0; i < players.size(); i++) {
-			ranks.get(f1.get(i).getId()).setF1(i);
-			ranks.get(f1a.get(i).getId()).setF1a(i);
-			ranks.get(f2.get(i).getId()).setF2(i);
-			ranks.get(f3.get(i).getId()).setF3(i);
-			ranks.get(f4.get(i).getId()).setF4(i);
-			ranks.get(f5.get(i).getId()).setF5(i);
-			ranks.get(f6.get(i).getId()).setF6(i);
-			ranks.get(f7.get(i).getId()).setF7(i);
+			for (Map.Entry<Canon, List<Player>> entry : rankOrders.entrySet()) {
+				ranks.get(entry.getValue().get(i).getId()).set(entry.getKey(),
+						i);
+			}
 		}
 
 		final int nPlayers = players.size();
 
 		// sort BordaRanks by borda score DESC.
-		Collections.sort(rankList, new Comparator<BordaRank>() {
+		Collections.sort(bordaPtq, new Comparator<BordaRank>() {
 			@Override
 			public int compare(BordaRank o1, BordaRank o2) {
 				double p1score = getScore(o1, nPlayers, fixedWeights);
@@ -334,7 +163,7 @@ public class LegitimateClaims {
 			}
 		});
 
-		for (BordaRank p : rankList) {
+		for (BordaRank p : bordaPtq) {
 			double allocation = Math.min(p.getPlayer().getD(), poolSize);
 			session.insert(new Allocate(p.getPlayer(), allocation, t));
 			poolSize -= allocation;
@@ -347,23 +176,18 @@ public class LegitimateClaims {
 			Arrays.fill(fBorda, 0.0);
 
 			// calculate Borda(f, C)
-			for (BordaRank p : rankList) {
+			for (BordaRank p : bordaPtq) {
 				List<FunctionRank> playerRanks = new ArrayList<LegitimateClaims.FunctionRank>();
-				playerRanks.add(new FunctionRank(Function.F1, p.getF1()));
-				playerRanks.add(new FunctionRank(Function.F1a, p.getF1a()));
-				playerRanks.add(new FunctionRank(Function.F2, p.getF2()));
-				playerRanks.add(new FunctionRank(Function.F3, p.getF3()));
-				playerRanks.add(new FunctionRank(Function.F4, p.getF4()));
-				playerRanks.add(new FunctionRank(Function.F5, p.getF5()));
-				playerRanks.add(new FunctionRank(Function.F6, p.getF6()));
-				playerRanks.add(new FunctionRank(Function.F7, p.getF7()));
+				for (Canon f : Canon.values()) {
+					playerRanks.add(new FunctionRank(f, p.get(f)));
+				}
 
 				Collections.sort(playerRanks);
 
 				int bordaAvailable = 0;
 				int lastIndex = 0;
 				int lastRank = 0;
-				int score = Function.values().length;
+				int score = Canon.values().length;
 				for (int i = 0; i <= playerRanks.size(); i++) {
 					FunctionRank f;
 					if (i == playerRanks.size())
@@ -413,18 +237,18 @@ public class LegitimateClaims {
 				fixedWeights[i] *= 1 / weightsSum;
 			}
 
-			/*int[] fHd = new int[8];
+			int[] fHd = new int[8];
 			Arrays.fill(fHd, 0);
-			for (Function f : Function.values()) {
-				for (int i = 0; i < f1.size(); i++) {
-					BordaRank r = rankList.get(i);
-					// TODO: use each function.
-					Player p = f1.get(i);
-					if (r.getPlayer().getId().equals(p.getId())) {
+			for (Canon f : Canon.values()) {
+				List<Player> functionRank = rankOrders.get(f);
+				for (int i = 0; i < players.size(); i++) {
+					BordaRank r = bordaPtq.get(i);
+					Player p = functionRank.get(i);
+					if (!r.getPlayer().getId().equals(p.getId())) {
 						fHd[f.ordinal()]++;
 					}
 				}
-			}*/
+			}
 
 			logger.info("w*(t) = " + Arrays.toString(fixedWeights));
 			storeWeights(fixedWeights);
@@ -433,14 +257,10 @@ public class LegitimateClaims {
 
 	private static double getScore(BordaRank r, int nPlayers, double[] weights) {
 		double score = 0;
-		score += weights[0] * (nPlayers - r.getF1());
-		score += weights[1] * (nPlayers - r.getF1a());
-		score += weights[2] * (nPlayers - r.getF2());
-		score += weights[3] * (nPlayers - r.getF3());
-		score += weights[4] * (nPlayers - r.getF4());
-		score += weights[5] * (nPlayers - r.getF5());
-		score += weights[6] * (nPlayers - r.getF6());
-		score += weights[7] * (nPlayers - r.getF7());
+		Canon[] canons = Canon.values();
+		for (int i = 0; i < weights.length; i++) {
+			score += weights[i] * (nPlayers - r.get(canons[i]));
+		}
 		return score;
 	}
 
@@ -469,14 +289,22 @@ public class LegitimateClaims {
 		if (sto != null) {
 			TransientAgentState s = sto.getAgentState(r.getPlayer().getId(),
 					game.getRoundNumber());
-			s.setProperty("f1", Double.toString(weights[0] * (n - r.getF1())));
-			s.setProperty("f1a", Double.toString(weights[1] * (n - r.getF1a())));
-			s.setProperty("f2", Double.toString(weights[2] * (n - r.getF2())));
-			s.setProperty("f3", Double.toString(weights[3] * (n - r.getF3())));
-			s.setProperty("f4", Double.toString(weights[4] * (n - r.getF4())));
-			s.setProperty("f5", Double.toString(weights[5] * (n - r.getF5())));
-			s.setProperty("f6", Double.toString(weights[6] * (n - r.getF6())));
-			s.setProperty("f7", Double.toString(weights[7] * (n - r.getF7())));
+			s.setProperty("f1",
+					Double.toString(weights[0] * (n - r.get(Canon.F1))));
+			s.setProperty("f1a",
+					Double.toString(weights[1] * (n - r.get(Canon.F1a))));
+			s.setProperty("f2",
+					Double.toString(weights[2] * (n - r.get(Canon.F2))));
+			s.setProperty("f3",
+					Double.toString(weights[3] * (n - r.get(Canon.F3))));
+			s.setProperty("f4",
+					Double.toString(weights[4] * (n - r.get(Canon.F4))));
+			s.setProperty("f5",
+					Double.toString(weights[5] * (n - r.get(Canon.F5))));
+			s.setProperty("f6",
+					Double.toString(weights[6] * (n - r.get(Canon.F6))));
+			s.setProperty("f7",
+					Double.toString(weights[7] * (n - r.get(Canon.F7))));
 		}
 	}
 
@@ -484,22 +312,18 @@ public class LegitimateClaims {
 		if (sto != null) {
 			PersistentEnvironment e = sto.getSimulation().getEnvironment();
 			int round = game.getRoundNumber();
-			for (Function f : Function.values()) {
+			for (Canon f : Canon.values()) {
 				e.setProperty("w_" + f, round,
 						Double.toString(weights[f.ordinal()]));
 			}
 		}
 	}
 
-	private enum Function {
-		F1, F1a, F2, F3, F4, F5, F6, F7
-	};
-
 	private static class FunctionRank implements Comparable<FunctionRank> {
-		Function f;
+		Canon f;
 		int rank;
 
-		FunctionRank(Function f, int rank) {
+		FunctionRank(Canon f, int rank) {
 			super();
 			this.f = f;
 			this.rank = rank;
