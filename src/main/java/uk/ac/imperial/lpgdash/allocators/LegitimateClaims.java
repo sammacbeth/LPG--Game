@@ -41,6 +41,10 @@ public class LegitimateClaims {
 	private final double[] weights;
 	private double gamma = 0.1;
 
+	public boolean soNauruBorda = false;
+	private boolean soHd = true;
+	private boolean soGamma = true;
+
 	private final StatefulKnowledgeSession session;
 	private final LPGService game;
 	private StorageService sto = null;
@@ -87,6 +91,10 @@ public class LegitimateClaims {
 
 	public void setStorage(StorageService sto) {
 		this.sto = sto;
+	}
+
+	public void setGamma(double gamma) {
+		this.gamma = gamma;
 	}
 
 	public Cluster getC() {
@@ -136,14 +144,6 @@ public class LegitimateClaims {
 
 	public void allocate(List<Player> players, double poolSize, int t) {
 
-		// map player histories
-		final Map<UUID, PlayerHistory> historyMap = new HashMap<UUID, PlayerHistory>(
-				players.size());
-		for (Player p : players) {
-			historyMap.put(p.getId(), p.getHistory().get(c));
-			storeHistory(p.getId(), p.getHistory().get(c));
-		}
-
 		Map<Canon, List<Player>> rankOrders = new HashMap<Canon, List<Player>>();
 		players = new ArrayList<Player>(players);
 		for (Canon f : Canon.values()) {
@@ -153,6 +153,7 @@ public class LegitimateClaims {
 		Map<UUID, BordaRank> ranks = new HashMap<UUID, BordaRank>();
 		for (Player p : players) {
 			ranks.put(p.getId(), new BordaRank(p));
+			storeHistory(p.getId(), p.getHistory().get(c));
 		}
 		ArrayList<BordaRank> bordaPtq = new ArrayList<BordaRank>(ranks.values());
 
@@ -167,14 +168,7 @@ public class LegitimateClaims {
 		final int nPlayers = players.size();
 
 		// sort BordaRanks by borda score DESC.
-		Collections.sort(bordaPtq, new Comparator<BordaRank>() {
-			@Override
-			public int compare(BordaRank o1, BordaRank o2) {
-				double p1score = getScore(o1, nPlayers);
-				double p2score = getScore(o2, nPlayers);
-				return Double.compare(p2score, p1score);
-			}
-		});
+		sortBordaRanks(bordaPtq);
 
 		for (BordaRank p : bordaPtq) {
 			double allocation = Math.min(p.getPlayer().getD(), poolSize);
@@ -185,29 +179,56 @@ public class LegitimateClaims {
 		}
 
 		if (c.getAllocationMethod() == Allocation.LC_SO) {
+			updateWeights(bordaPtq, rankOrders);
+		}
+	}
 
-			double[] fBorda = fBorda(bordaPtq);
-
-			logger.info("Borda(f, C) = " + Arrays.toString(fBorda));
-
-			// update weights
-			double averageBorda = 0;
-			double totalBorda = 0;
-			for (int i = 0; i < fBorda.length; i++) {
-				totalBorda += fBorda[i];
+	void sortBordaRanks(List<BordaRank> bordaPtq) {
+		final int nPlayers = bordaPtq.size();
+		Collections.sort(bordaPtq, new Comparator<BordaRank>() {
+			@Override
+			public int compare(BordaRank o1, BordaRank o2) {
+				double p1score = getScore(o1, nPlayers);
+				double p2score = getScore(o2, nPlayers);
+				return Double.compare(p2score, p1score);
 			}
-			averageBorda = totalBorda / fBorda.length;
-			for (int i = 0; i < fBorda.length; i++) {
-				weights[i] = weights[i]
-						+ (weights[i] * (fBorda[i] - averageBorda) / totalBorda);
-			}
+		});
+	}
 
-			normaliseWeights();
-			logger.info("w*(t) = " + Arrays.toString(weights));
+	private double getScore(BordaRank r, int nPlayers) {
+		double score = 0;
+		Canon[] canons = Canon.values();
+		for (int i = 0; i < weights.length; i++) {
+			score += weights[i] * (nPlayers - r.get(canons[i]));
+		}
+		return score;
+	}
 
+	private void updateWeights(List<BordaRank> bordaPtq,
+			Map<Canon, List<Player>> canonRankings) {
+		double[] fBorda = fBorda(bordaPtq);
+
+		logger.info("Borda(f, C) = " + Arrays.toString(fBorda));
+
+		// update weights
+		double averageBorda = 0;
+		double totalBorda = 0;
+		for (int i = 0; i < fBorda.length; i++) {
+			totalBorda += fBorda[i];
+		}
+		averageBorda = totalBorda / fBorda.length;
+		for (int i = 0; i < fBorda.length; i++) {
+			weights[i] = weights[i]
+					+ (weights[i] * (fBorda[i] - averageBorda) / totalBorda);
+		}
+
+		normaliseWeights();
+		logger.info("w*(t) = " + Arrays.toString(weights));
+
+		if (soHd) {
 			int[] fHd = new int[8];
 			for (Canon f : Canon.values()) {
-				fHd[f.ordinal()] = hdFBorda(rankOrders.get(f), bordaPtq);
+				fHd[f.ordinal()] = hdFBorda(canonRankings.get(f), bordaPtq);
 			}
 			double averageHd = 0;
 			int totalHd = 0;
@@ -217,11 +238,16 @@ public class LegitimateClaims {
 			averageHd = totalHd / (double) fHd.length;
 			for (int i = 0; i < fHd.length; i++) {
 				weights[i] = weights[i]
-						+ (weights[i] * (fHd[i] - averageHd) / totalHd);
+						+ (Math.min(weights[i], 1) * (fHd[i] - averageHd) / totalHd);
+				if(weights[i] < 0 || weights[i] > 1) {
+					logger.info("This shouldn't happen!");
+				}
 			}
 			normaliseWeights();
 			logger.info("w*(t) = " + Arrays.toString(weights));
+		}
 
+		if (soGamma) {
 			final double equalWeight = 1 / (double) weights.length;
 			for (int i = 0; i < weights.length; i++) {
 				if (weights[i] > equalWeight) {
@@ -235,18 +261,8 @@ public class LegitimateClaims {
 
 			normaliseWeights();
 			logger.info("w*(t+1) = " + Arrays.toString(weights));
-
-			storeWeights();
 		}
-	}
-
-	private double getScore(BordaRank r, int nPlayers) {
-		double score = 0;
-		Canon[] canons = Canon.values();
-		for (int i = 0; i < weights.length; i++) {
-			score += weights[i] * (nPlayers - r.get(canons[i]));
-		}
-		return score;
+		storeWeights();
 	}
 
 	private void normaliseWeights() {
@@ -259,7 +275,7 @@ public class LegitimateClaims {
 		}
 	}
 
-	private double[] fBorda(List<BordaRank> bordaPtq) {
+	double[] fBorda(List<BordaRank> bordaPtq) {
 		double[] fBorda = new double[8];
 		Arrays.fill(fBorda, 0.0);
 
@@ -272,7 +288,7 @@ public class LegitimateClaims {
 
 			Collections.sort(playerRanks);
 
-			int bordaAvailable = 0;
+			double bordaAvailable = 0;
 			int lastIndex = 0;
 			int lastRank = 0;
 			int score = Canon.values().length;
@@ -293,11 +309,11 @@ public class LegitimateClaims {
 						fBorda[fAdd.f.ordinal()] += bordaPerFn;
 					}
 
-					bordaAvailable = score;
+					bordaAvailable = soNauruBorda ? 1.0 / (1.0 + i) : score;
 					lastIndex = i;
 					lastRank = f.rank;
 				} else {
-					bordaAvailable += score;
+					bordaAvailable += soNauruBorda ? 1.0 / (1.0 + i) : score;
 				}
 				score--;
 			}

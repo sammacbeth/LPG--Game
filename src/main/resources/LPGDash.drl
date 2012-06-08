@@ -292,7 +292,7 @@ rule "Calculate round fairness"
 		}
 		if (storage != null) {
 			storage.getSimulation().getEnvironment().setProperty("c"+ $c.getId() +"-fairness",
-					$r.getNumber() + 1,
+					$r.getNumber(),
 					Double.toString($fairness.getStandardDeviation()));
 		}
 end

@@ -56,6 +56,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	public double alpha;
 	@Parameter(name = "beta")
 	public double beta;
+	@Parameter(name = "gamma")
+	public double gamma;
 	@Parameter(name = "seed")
 	public int seed;
 
@@ -112,6 +114,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		if (c.isLC()) {
 			LegitimateClaims lc = new LegitimateClaims(c, session, this.game);
 			lc.setStorage(storage);
+			lc.setGamma(gamma);
 			session.insert(lc);
 		}
 		for (int n = 0; n < cCount; n++) {
