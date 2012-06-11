@@ -123,7 +123,8 @@ rule "Accumulate Provisions"
     when
 		$r : Round( type == RoundType.DEMAND )
 		$c : Cluster( )
-		$provision : Provision( this coincides $r )
+		$provision : Provision( $p : player, this coincides $r )
+		MemberOf( player == $p, cluster == $c )
 		$pool : ProvisionPool( cluster == $c )
 		not( Processed( $provision ;) )
     then
@@ -200,7 +201,7 @@ rule "Join cluster"
 	then
 		insert( new MemberOf( $p, $c ) );
 		insert( new Processed( $j ) );
-		logger.info("Joined cluster: "+ $p );
+		logger.info("Joined cluster: "+ $p +", "+ $c );
 end
 
 rule "Leave cluster"
