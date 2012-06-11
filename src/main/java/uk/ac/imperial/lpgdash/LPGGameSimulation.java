@@ -4,6 +4,7 @@ import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
@@ -102,28 +103,16 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.storage);
-		Allocation c0All = Allocation.RANDOM;
-		for (Allocation a : Allocation.values()) {
-			if (clusters.equalsIgnoreCase(a.name())) {
-				c0All = a;
-				break;
-			}
-		}
-		Cluster c = new Cluster(0, c0All);
-		session.insert(c);
-		if (c.isLC()) {
-			LegitimateClaims lc = new LegitimateClaims(c, session, this.game);
-			lc.setStorage(storage);
-			lc.setGamma(gamma);
-			session.insert(lc);
-		}
+
+		Cluster[] clusterArr = initClusters();
+
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
 			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
-			session.insert(new JoinCluster(p, c));
+			session.insert(new JoinCluster(p, clusterArr[n % clusterArr.length]));
 			session.insert(new Generate(p, game.getRoundNumber() + 1));
 		}
 		for (int n = 0; n < ncCount; n++) {
@@ -132,9 +121,35 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
-			session.insert(new JoinCluster(p, c));
+			session.insert(new JoinCluster(p, clusterArr[n % clusterArr.length]));
 			session.insert(new Generate(p, game.getRoundNumber() + 1));
 		}
+	}
+
+	protected Cluster[] initClusters() {
+		String[] clusterNames = StringUtils.split(this.clusters, '.');
+		Cluster[] clusters = new Cluster[clusterNames.length];
+		int clusterCtr = 0;
+		for (int i = 0; i < clusterNames.length; i++) {
+			Allocation method = Allocation.RANDOM;
+			for (Allocation a : Allocation.values()) {
+				if (clusterNames[i].equalsIgnoreCase(a.name())) {
+					method = a;
+					break;
+				}
+			}
+			Cluster c = new Cluster(clusterCtr++, method);
+			session.insert(c);
+			if (c.isLC()) {
+				LegitimateClaims lc = new LegitimateClaims(c, session,
+						this.game);
+				lc.setStorage(storage);
+				lc.setGamma(gamma);
+				session.insert(lc);
+			}
+			clusters[i] = c;
+		}
+		return clusters;
 	}
 
 	@Override
