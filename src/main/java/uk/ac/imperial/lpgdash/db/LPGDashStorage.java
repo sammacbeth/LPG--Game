@@ -50,7 +50,7 @@ public class LPGDashStorage extends SqlStorage {
 		try {
 			createTables = conn.createStatement();
 			createTables.execute("CREATE TABLE IF NOT EXISTS `playerScore` ("
-					+ "`simID` int(11) NOT NULL,"
+					+ "`simID` bigint(20) NOT NULL,"
 					+ "`player` varchar(10) NOT NULL,"
 					+ "`round` int(11) NOT NULL," + "`g` double NOT NULL,"
 					+ "`q` double NOT NULL," + "`d` double NOT NULL,"
@@ -63,7 +63,7 @@ public class LPGDashStorage extends SqlStorage {
 					+ "KEY `round` (`round`)" + ")");
 
 			createTables.execute("CREATE TABLE IF NOT EXISTS `roundGlobals` ("
-					+ "`simID` int(11) NOT NULL," + "`round` int(11) NOT NULL,"
+					+ "`simID` bigint(20) NOT NULL," + "`round` int(11) NOT NULL,"
 					+ "`fairness` double NOT NULL,"
 					+ "`w_f1` double DEFAULT NULL,"
 					+ "`w_f1a` double DEFAULT NULL,"
