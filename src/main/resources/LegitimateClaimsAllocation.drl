@@ -25,6 +25,14 @@ query lcCluster(Cluster c)
 		Allocation.LC_SO ) )
 end
 
+query compliantRound(Player p, int $t)
+	Generate( t == $t, $g : g, $q : q, player == p )
+	Demand( $d : quantity, player == p, t == $t, quantity == $q )
+	Provision( $p : quantity, player == p, t == $t, quantity == $g )
+	Allocate( $r : quantity, player == p, t == $t )
+	Appropriate( $rP : quantity, player == p, t == $t, quantity == $r )
+end
+
 rule "Create PlayerHistory"
 	salience 2
 	when
@@ -165,7 +173,7 @@ rule "LC resource allocation"
 	no-loop
 	salience -2
 	when
-		$r : Round( type == RoundType.DEMAND, $t : number )
+		$r : Round( type == RoundType.DEMAND, $t : number, $tm : number - 1 )
 		not Processed( $r ;)
 		$c : Cluster( $method : allocationMethod )
 		lcCluster( $c ;)

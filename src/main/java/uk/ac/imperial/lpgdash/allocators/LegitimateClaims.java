@@ -11,6 +11,8 @@ import java.util.UUID;
 
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
+import org.drools.runtime.rule.QueryResults;
+import org.drools.runtime.rule.Variable;
 
 import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
@@ -43,7 +45,6 @@ public class LegitimateClaims {
 
 	public boolean soNauruBorda = false;
 	private boolean soHd = true;
-	private boolean soGamma = true;
 
 	private final StatefulKnowledgeSession session;
 	private final LPGService game;
@@ -238,8 +239,8 @@ public class LegitimateClaims {
 			averageHd = totalHd / (double) fHd.length;
 			for (int i = 0; i < fHd.length; i++) {
 				weights[i] = weights[i]
-						+ (Math.min(weights[i], 1) * (fHd[i] - averageHd) / totalHd);
-				if(weights[i] < 0 || weights[i] > 1) {
+						+ (weights[i] * (fHd[i] - averageHd) / totalHd);
+				if (weights[i] < 0 || weights[i] > 1) {
 					logger.info("This shouldn't happen!");
 				}
 			}
@@ -247,7 +248,7 @@ public class LegitimateClaims {
 			logger.info("w*(t) = " + Arrays.toString(weights));
 		}
 
-		if (soGamma) {
+		if (bordaPtq.size() == getCompliantCount()) {
 			final double equalWeight = 1 / (double) weights.length;
 			for (int i = 0; i < weights.length; i++) {
 				if (weights[i] > equalWeight) {
@@ -409,6 +410,12 @@ public class LegitimateClaims {
 			return "FunctionRank [f=" + f + ", rank=" + rank + "]";
 		}
 
+	}
+
+	private int getCompliantCount() {
+		QueryResults results = session.getQueryResults("compliantRound",
+				new Object[] { Variable.v, game.getRoundNumber() - 1 });
+		return results.size();
 	}
 
 }
