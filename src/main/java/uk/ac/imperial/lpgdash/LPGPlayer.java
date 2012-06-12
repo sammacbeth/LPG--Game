@@ -1,10 +1,13 @@
 package uk.ac.imperial.lpgdash;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
 import uk.ac.imperial.lpgdash.actions.Appropriate;
 import uk.ac.imperial.lpgdash.actions.Demand;
+import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LeaveCluster;
 import uk.ac.imperial.lpgdash.actions.Provision;
 import uk.ac.imperial.lpgdash.facts.Cluster;
@@ -34,6 +37,7 @@ public class LPGPlayer extends AbstractParticipant {
 	double satisfaction = 0.5;
 
 	Cluster cluster = null;
+	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
 
 	protected LPGService game;
 
@@ -41,7 +45,8 @@ public class LPGPlayer extends AbstractParticipant {
 		super(id, name);
 	}
 
-	public LPGPlayer(UUID id, String name, double pCheat, double alpha, double beta) {
+	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
+			double beta) {
 		super(id, name);
 		this.pCheat = pCheat;
 		this.alpha = alpha;
@@ -91,23 +96,25 @@ public class LPGPlayer extends AbstractParticipant {
 				// determine utility gained from last round
 				calculateScores();
 			}
-			if (this.satisfaction < 0.1 && game.getRoundNumber() % 20 == 0) {
-				leaveCluster();
-			} else {
-
-				// update g and q for this round
-				g = game.getG(getID());
-				q = game.getQ(getID());
-
-				if (Random.randomDouble() < pCheat) {
-					// cheat: provision less than g
-					provision(g * Random.randomDouble());
-					demand(q);
-				} else {
-					provision(g);
-					demand(q);
+			if (game.getRoundNumber() % 20 == 0) {
+				assessClusterMembership();
+				if (this.cluster == null) {
+					return;
 				}
 			}
+			// update g and q for this round
+			g = game.getG(getID());
+			q = game.getQ(getID());
+
+			if (Random.randomDouble() < pCheat) {
+				// cheat: provision less than g
+				provision(g * Random.randomDouble());
+				demand(q);
+			} else {
+				provision(g);
+				demand(q);
+			}
+
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
 			appropriate(game.getAllocated(getID()));
 		}
@@ -147,6 +154,14 @@ public class LPGPlayer extends AbstractParticipant {
 		}
 	}
 
+	protected void joinCluster(Cluster c) {
+		try {
+			environment.act(new JoinCluster(c), getID(), authkey);
+		} catch (ActionHandlingException e) {
+			logger.warn("Failed to join cluster", e);
+		}
+	}
+
 	protected void calculateScores() {
 		double r = game.getAllocated(getID());
 		double rP = game.getAppropriated(getID());
@@ -162,12 +177,13 @@ public class LPGPlayer extends AbstractParticipant {
 		else
 			satisfaction = satisfaction - beta * satisfaction;
 
-		logger.info("[g=" + g + ", q=" + q + ", d=" + d + ", p=" + p + ", r="
+		logger.info("["+ cluster + ", g=" + g + ", q=" + q + ", d=" + d + ", p=" + p + ", r="
 				+ r + ", r'=" + rP + ", R=" + rTotal + ", U=" + u + ", o="
 				+ satisfaction + "]");
 
 		if (this.persist != null) {
-			TransientAgentState state = this.persist.getState(game.getRoundNumber()-1);
+			TransientAgentState state = this.persist.getState(game
+					.getRoundNumber() - 1);
 			state.setProperty("g", Double.toString(g));
 			state.setProperty("q", Double.toString(q));
 			state.setProperty("d", Double.toString(d));
@@ -178,6 +194,36 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("U", Double.toString(u));
 			state.setProperty("o", Double.toString(satisfaction));
 			state.setProperty("cluster", "c" + this.cluster.getId());
+		}
+	}
+
+	private void assessClusterMembership() {
+		if (clusterSatisfaction.size() == 0) {
+			Set<Cluster> availableClusters = this.game.getClusters();
+			for (Cluster c : availableClusters) {
+				if (this.cluster.equals(c))
+					clusterSatisfaction.put(c, this.satisfaction);
+				else
+					clusterSatisfaction.put(c, 0.5);
+			}
+		} else {
+			clusterSatisfaction.put(this.cluster, this.satisfaction);
+		}
+		Cluster preferred = this.cluster;
+		double maxSatisfaction = this.satisfaction;
+		for (Map.Entry<Cluster, Double> e : clusterSatisfaction.entrySet()) {
+			if (e.getValue() > maxSatisfaction) {
+				maxSatisfaction = e.getValue();
+				preferred = e.getKey();
+			}
+		}
+		if (maxSatisfaction < 0.1) {
+			leaveCluster();
+			this.cluster = null;
+		} else if (!preferred.equals(this.cluster)) {
+			leaveCluster();
+			joinCluster(preferred);
+			this.cluster = preferred;
 		}
 	}
 }

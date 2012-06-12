@@ -1,8 +1,11 @@
 package uk.ac.imperial.lpgdash;
 
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 import org.apache.log4j.Logger;
@@ -30,6 +33,7 @@ public class LPGService extends EnvironmentService {
 	final StatefulKnowledgeSession session;
 	Map<UUID, Player> players = new HashMap<UUID, Player>();
 	Map<UUID, MemberOf> members = new HashMap<UUID, MemberOf>();
+	Set<Cluster> clusters = new HashSet<Cluster>();
 
 	RoundType round = RoundType.INIT;
 	int roundNumber = 0;
@@ -128,6 +132,23 @@ public class LPGService extends EnvironmentService {
 			return m.getCluster();
 		else
 			return null;
+	}
+
+	public Set<Cluster> getClusters() {
+		if (this.clusters.size() == 0) {
+			Collection<Object> clusterSearch = session
+					.getObjects(new ObjectFilter() {
+
+						@Override
+						public boolean accept(Object object) {
+							return object instanceof Cluster;
+						}
+					});
+			for (Object object : clusterSearch) {
+				this.clusters.add((Cluster) object);
+			}
+		}
+		return Collections.unmodifiableSet(this.clusters);
 	}
 
 }
