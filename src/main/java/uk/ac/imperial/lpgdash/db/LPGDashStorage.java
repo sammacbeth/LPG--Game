@@ -49,31 +49,73 @@ public class LPGDashStorage extends SqlStorage {
 		Statement createTables = null;
 		try {
 			createTables = conn.createStatement();
-			createTables.execute("CREATE TABLE IF NOT EXISTS `playerScore` ("
-					+ "`simID` int(11) NOT NULL,"
-					+ "`player` varchar(10) NOT NULL,"
-					+ "`round` int(11) NOT NULL," + "`g` double NOT NULL,"
-					+ "`q` double NOT NULL," + "`d` double NOT NULL,"
-					+ "`p` double NOT NULL," + "`r` double NOT NULL,"
-					+ "`rP` double NOT NULL," + "`rTotal` double NOT NULL,"
-					+ "`satisfaction` double NOT NULL,"
-					+ "`U` double NOT NULL,"
-					+ "PRIMARY KEY (`simID`,`player`,`round`),"
-					+ "KEY `simID` (`simID`)," + "KEY `player` (`player`),"
-					+ "KEY `round` (`round`)" + ")");
+			createTables
+					.execute("CREATE TABLE IF NOT EXISTS `playerScore` ("
+							+ "`simID` bigint(20) NOT NULL,"
+							+ "`player` varchar(10) NOT NULL,"
+							+ "`round` int(11) NOT NULL,"
+							+ "`g` double NOT NULL,"
+							+ "`q` double NOT NULL,"
+							+ "`d` double NOT NULL,"
+							+ "`p` double NOT NULL,"
+							+ "`r` double NOT NULL,"
+							+ "`rP` double NOT NULL,"
+							+ "`rTotal` double NOT NULL,"
+							+ "`satisfaction` double NOT NULL,"
+							+ "`U` double NOT NULL,"
+							+ "PRIMARY KEY (`simID`,`player`,`round`),"
+							+ "KEY `simID` (`simID`),"
+							+ "KEY `player` (`player`),"
+							+ "KEY `round` (`round`),"
+							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE"
+							+ ")");
 
-			createTables.execute("CREATE TABLE IF NOT EXISTS `roundGlobals` ("
-					+ "`simID` int(11) NOT NULL," + "`round` int(11) NOT NULL,"
-					+ "`fairness` double NOT NULL,"
-					+ "`w_f1` double DEFAULT NULL,"
-					+ "`w_f1a` double DEFAULT NULL,"
-					+ "`w_f2` double DEFAULT NULL,"
-					+ "`w_f3` double DEFAULT NULL,"
-					+ "`w_f4` double DEFAULT NULL,"
-					+ "`w_f5` double DEFAULT NULL,"
-					+ "`w_f6` double DEFAULT NULL,"
-					+ "`w_f7` double DEFAULT NULL,"
-					+ "PRIMARY KEY (`simID`,`round`)" + ")");
+			createTables
+					.execute("CREATE TABLE IF NOT EXISTS `roundGlobals` ("
+							+ "`simID` bigint(20) NOT NULL,"
+							+ "`round` int(11) NOT NULL,"
+							+ "`fairness` double NOT NULL,"
+							+ "`w_f1` double DEFAULT NULL,"
+							+ "`w_f1a` double DEFAULT NULL,"
+							+ "`w_f2` double DEFAULT NULL,"
+							+ "`w_f3` double DEFAULT NULL,"
+							+ "`w_f4` double DEFAULT NULL,"
+							+ "`w_f5` double DEFAULT NULL,"
+							+ "`w_f6` double DEFAULT NULL,"
+							+ "`w_f7` double DEFAULT NULL,"
+							+ "PRIMARY KEY (`simID`,`round`),"
+							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE"
+							+ ")");
+
+			createTables
+					.execute("CREATE TABLE IF NOT EXISTS `t_simulationFairness` ("
+							+ "`simID` bigint(20) NOT NULL,"
+							+ "`fairness` double NOT NULL,"
+							+ "PRIMARY KEY (`simID`),"
+							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
+
+			createTables
+					.execute("CREATE TABLE IF NOT EXISTS `t_aggregatePlayerScore` ("
+							+ "`simID` bigint(20) NOT NULL,"
+							+ "`player` varchar(10) NOT NULL,"
+							+ "`USum` double NOT NULL,"
+							+ "PRIMARY KEY (`simID`, `player`),"
+							+ "KEY `simID` (`simID`),"
+							+ "KEY `player` (`player`),"
+							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
+
+			createTables
+					.execute("CREATE TABLE IF NOT EXISTS `t_simulationSummary` ("
+							+ "`ID` bigint(20) NOT NULL,"
+							+ "`Name` varchar(255) NOT NULL,"
+							+ "`ut. C` double NOT NULL,"
+							+ "`ut. NC` double NOT NULL,"
+							+ "`rem. C` int NOT NULL,"
+							+ "`rem. NC` int NOT NULL,"
+							+ "`fairness` double NOT NULL,"
+							+ "PRIMARY KEY (`ID`),"
+							+ "KEY `Name` (`Name`),"
+							+ "FOREIGN KEY (`ID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 		} catch (SQLException e) {
 			logger.warn("", e);
@@ -89,12 +131,12 @@ public class LPGDashStorage extends SqlStorage {
 	}
 
 	@Override
-	protected void updateTransientEnvironment() {
+	protected synchronized void updateTransientEnvironment() {
 		PreparedStatement insertRound = null;
 
 		try {
 			insertRound = conn
-					.prepareStatement("INSERT INTO roundGlobals "
+					.prepareStatement("REPLACE INTO roundGlobals "
 							+ "(simID, round, fairness, w_f1, w_f1a, w_f2, w_f3, w_f4, w_f5, w_f6, w_f7)"
 							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
 		} catch (SQLException e) {
@@ -159,11 +201,11 @@ public class LPGDashStorage extends SqlStorage {
 	}
 
 	@Override
-	protected void updateTransientAgents() {
+	protected synchronized void updateTransientAgents() {
 		PreparedStatement insertPlayer = null;
 		try {
 			insertPlayer = conn
-					.prepareStatement("INSERT INTO playerScore "
+					.prepareStatement("REPLACE INTO playerScore "
 							+ "(simID, player, round, g, q, d, p, r, rP, rTotal, satisfaction, U)  "
 							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
 		} catch (SQLException e) {
@@ -224,7 +266,7 @@ public class LPGDashStorage extends SqlStorage {
 	}
 
 	@Override
-	public void stop() {
+	public synchronized void stop() {
 		this.shutdown = true;
 		super.stop();
 	}
