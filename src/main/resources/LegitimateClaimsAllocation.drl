@@ -25,7 +25,8 @@ query lcCluster(Cluster c)
 		Allocation.LC_SO ) )
 end
 
-query compliantRound(Player p, int $t)
+query compliantRound(Cluster c, Player p, int $t)
+	MemberOf( player == p, cluster == c )
 	Generate( t == $t, $g : g, $q : q, player == p )
 	Demand( $d : quantity, player == p, t == $t, quantity == $q )
 	Provision( $p : quantity, player == p, t == $t, quantity == $g )

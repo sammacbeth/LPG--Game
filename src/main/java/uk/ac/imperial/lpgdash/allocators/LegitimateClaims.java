@@ -238,7 +238,9 @@ public class LegitimateClaims {
 			}
 			averageHd = totalHd / (double) fHd.length;
 			for (int i = 0; i < fHd.length; i++) {
-				double delta = weights[i] * (fHd[i] - averageHd) / totalHd;
+				double delta = 0;
+				if (totalHd > 0)
+					delta = weights[i] * (fHd[i] - averageHd) / totalHd;
 				if (ratelimit) {
 					if (delta > 0.0007)
 						delta = 0.0007;
@@ -420,8 +422,9 @@ public class LegitimateClaims {
 
 	private int getCompliantCount() {
 		QueryResults results = session.getQueryResults("compliantRound",
-				new Object[] { Variable.v, game.getRoundNumber() - 1 });
-		return results.size();
+				new Object[] { this.c, Variable.v, game.getRoundNumber() - 1 });
+		int size = results.size();
+		return size;
 	}
 
 }
