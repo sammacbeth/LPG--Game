@@ -194,6 +194,7 @@ rule "Process Appropriate"
 end
 
 rule "Join cluster"
+	salience 11
 	when
 		$j : JoinCluster( $c : cluster, $p : player )
 		not MemberOf( player == $p )
@@ -205,6 +206,7 @@ rule "Join cluster"
 end
 
 rule "Leave cluster"
+	salience 12
 	when
 		$a : LeaveCluster( $c : cluster, $p : player )
 		$m : MemberOf( cluster == $c, player == $p )

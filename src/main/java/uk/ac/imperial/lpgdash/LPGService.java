@@ -82,24 +82,28 @@ public class LPGService extends EnvironmentService {
 
 	private synchronized MemberOf getMemberOf(final UUID id) {
 		if (!members.containsKey(id)) {
-			Collection<Object> rawMembers = session
-					.getObjects(new ObjectFilter() {
-						@Override
-						public boolean accept(Object object) {
-							return object instanceof MemberOf;
-						}
-					});
-			for (Object mObj : rawMembers) {
-				MemberOf m = (MemberOf) mObj;
-				members.put(m.player.getId(), m);
-			}
+			buildMembersCache();
 		}
 		MemberOf m = members.get(id);
 		if (m != null && session.getFactHandle(m) == null) {
-			members.remove(m);
-			return null;
+			buildMembersCache();
+			return members.get(id);
 		}
 		return m;
+	}
+
+	private synchronized void buildMembersCache() {
+		members.clear();
+		Collection<Object> rawMembers = session.getObjects(new ObjectFilter() {
+			@Override
+			public boolean accept(Object object) {
+				return object instanceof MemberOf;
+			}
+		});
+		for (Object mObj : rawMembers) {
+			MemberOf m = (MemberOf) mObj;
+			members.put(m.player.getId(), m);
+		}
 	}
 
 	public RoundType getRound() {

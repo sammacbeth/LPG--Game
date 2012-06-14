@@ -177,9 +177,9 @@ public class LPGPlayer extends AbstractParticipant {
 		else
 			satisfaction = satisfaction - beta * satisfaction;
 
-		logger.info("["+ cluster + ", g=" + g + ", q=" + q + ", d=" + d + ", p=" + p + ", r="
-				+ r + ", r'=" + rP + ", R=" + rTotal + ", U=" + u + ", o="
-				+ satisfaction + "]");
+		logger.info("[" + cluster + ", g=" + g + ", q=" + q + ", d=" + d
+				+ ", p=" + p + ", r=" + r + ", r'=" + rP + ", R=" + rTotal
+				+ ", U=" + u + ", o=" + satisfaction + "]");
 
 		if (this.persist != null) {
 			TransientAgentState state = this.persist.getState(game
@@ -193,7 +193,7 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("RTotal", Double.toString(rTotal));
 			state.setProperty("U", Double.toString(u));
 			state.setProperty("o", Double.toString(satisfaction));
-			state.setProperty("cluster", "c" + this.cluster.getId());
+			state.setProperty("cluster", Integer.toString(this.cluster.getId()));
 		}
 	}
 
@@ -224,6 +224,7 @@ public class LPGPlayer extends AbstractParticipant {
 			leaveCluster();
 			joinCluster(preferred);
 			this.cluster = preferred;
+			this.satisfaction = clusterSatisfaction.get(preferred);
 		}
 	}
 }

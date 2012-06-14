@@ -63,10 +63,12 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`rTotal` double NOT NULL,"
 							+ "`satisfaction` double NOT NULL,"
 							+ "`U` double NOT NULL,"
+							+ "`cluster` int(11) NOT NULL"
 							+ "PRIMARY KEY (`simID`,`player`,`round`),"
 							+ "KEY `simID` (`simID`),"
 							+ "KEY `player` (`player`),"
 							+ "KEY `round` (`round`),"
+							+ "KEY `cluster` (`cluster`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE"
 							+ ")");
 
@@ -88,16 +90,17 @@ public class LPGDashStorage extends SqlStorage {
 							+ ")");
 
 			createTables
-					.execute("CREATE TABLE IF NOT EXISTS `t_simulationFairness` ("
+					.execute("CREATE TABLE IF NOT EXISTS `simulationFairness` ("
 							+ "`simID` bigint(20) NOT NULL,"
 							+ "`fairness` double NOT NULL,"
 							+ "PRIMARY KEY (`simID`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 			createTables
-					.execute("CREATE TABLE IF NOT EXISTS `t_aggregatePlayerScore` ("
+					.execute("CREATE TABLE IF NOT EXISTS `aggregatePlayerScore` ("
 							+ "`simID` bigint(20) NOT NULL,"
 							+ "`player` varchar(10) NOT NULL,"
+							+ "`cluster` int(11) NOT NULL,"
 							+ "`USum` double NOT NULL,"
 							+ "PRIMARY KEY (`simID`, `player`),"
 							+ "KEY `simID` (`simID`),"
@@ -105,7 +108,7 @@ public class LPGDashStorage extends SqlStorage {
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 			createTables
-					.execute("CREATE TABLE IF NOT EXISTS `t_simulationSummary` ("
+					.execute("CREATE TABLE IF NOT EXISTS `simulationSummary` ("
 							+ "`ID` bigint(20) NOT NULL,"
 							+ "`Name` varchar(255) NOT NULL,"
 							+ "`ut. C` double NOT NULL,"
@@ -206,8 +209,8 @@ public class LPGDashStorage extends SqlStorage {
 		try {
 			insertPlayer = conn
 					.prepareStatement("REPLACE INTO playerScore "
-							+ "(simID, player, round, g, q, d, p, r, rP, rTotal, satisfaction, U)  "
-							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
+							+ "(simID, player, round, g, q, d, p, r, rP, rTotal, satisfaction, U, cluster)  "
+							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
 		} catch (SQLException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);
@@ -244,6 +247,11 @@ public class LPGDashStorage extends SqlStorage {
 							getProperty(props, "RTotal", 0.0));
 					insertPlayer.setDouble(11, getProperty(props, "o", 0.0));
 					insertPlayer.setDouble(12, getProperty(props, "U", 0.0));
+					if (props.containsKey("cluster"))
+						insertPlayer.setInt(13,
+								Integer.parseInt(props.get("cluster")));
+					else
+						insertPlayer.setInt(13, 0);
 
 					insertPlayer.addBatch();
 
