@@ -23,16 +23,16 @@ avg(`anc`.`USum`) AS `ut. NC`,
 (select count(0) from `playerScore` `crem` where ((`crem`.`simID` = `s`.`id`) and (`crem`.`player` like 'nc%') and (`crem`.`round` = 499))) AS `rem. NC`,
 avg(`f`.`fairness`) AS `fairness` 
 from (((`simulations` `s` 
-left join `aggregatePlayerScore` `ac` on(((`ac`.`simID` = `s`.`id`) and (`ac`.`player` like 'c%')))) 
-left join `aggregatePlayerScore` `anc` on(((`anc`.`simID` = `s`.`id`) and (`anc`.`player` like 'nc%')))) 
-left join `simulationFairness` `f` on((`f`.`id` = `s`.`id`))) group by `s`.`id`;
+left join `t_aggregatePlayerScore` `ac` on(((`ac`.`simID` = `s`.`id`) and (`ac`.`player` like 'c%')))) 
+left join `t_aggregatePlayerScore` `anc` on(((`anc`.`simID` = `s`.`id`) and (`anc`.`player` like 'nc%')))) 
+left join `t_simulationFairness` `f` on((`f`.`simID` = `s`.`id`))) group by `s`.`id`;
 
 CREATE OR REPLACE VIEW `aggregatedSimulations` AS 
-select `simulationSummary`.`Name` AS `strategy`,
-avg(`simulationSummary`.`ut. C`) AS `ut. C`,
-std(`simulationSummary`.`ut. C`) AS `stddev ut. C`,
-avg(`simulationSummary`.`ut. NC`) AS `ut. NC`,
-std(`simulationSummary`.`ut. NC`) AS `stddev ut. NC`,
-avg(`simulationSummary`.`rem. C`) AS `rem. C`,avg(`simulationSummary`.`rem. NC`) AS `rem. NC`,
-avg(`simulationSummary`.`fairness`) AS `fairness`,
-count(0) AS `repeats` from `simulationSummary` group by `simulationSummary`.`Name`;
+select `t_simulationSummary`.`Name` AS `strategy`,
+avg(`t_simulationSummary`.`ut. C`) AS `ut. C`,
+std(`t_simulationSummary`.`ut. C`) AS `stddev ut. C`,
+avg(`t_simulationSummary`.`ut. NC`) AS `ut. NC`,
+std(`t_simulationSummary`.`ut. NC`) AS `stddev ut. NC`,
+avg(`t_simulationSummary`.`rem. C`) AS `rem. C`,avg(`t_simulationSummary`.`rem. NC`) AS `rem. NC`,
+avg(`t_simulationSummary`.`fairness`) AS `fairness`,
+count(0) AS `repeats` from `t_simulationSummary` group by `t_simulationSummary`.`Name`;

@@ -43,7 +43,7 @@ public class LegitimateClaims {
 	private final double[] weights;
 	private double gamma = 0.1;
 
-	public boolean soNauruBorda = false;
+	public boolean ratelimit = false;
 	private boolean soHd = true;
 
 	private final StatefulKnowledgeSession session;
@@ -238,8 +238,14 @@ public class LegitimateClaims {
 			}
 			averageHd = totalHd / (double) fHd.length;
 			for (int i = 0; i < fHd.length; i++) {
-				weights[i] = weights[i]
-						+ (weights[i] * (fHd[i] - averageHd) / totalHd);
+				double delta = weights[i] * (fHd[i] - averageHd) / totalHd;
+				if (ratelimit) {
+					if (delta > 0.0007)
+						delta = 0.0007;
+					else if (delta < -0.0007)
+						delta = -0.0007;
+				}
+				weights[i] = weights[i] + delta;
 				if (weights[i] < 0 || weights[i] > 1) {
 					logger.info("This shouldn't happen!");
 				}
@@ -310,11 +316,11 @@ public class LegitimateClaims {
 						fBorda[fAdd.f.ordinal()] += bordaPerFn;
 					}
 
-					bordaAvailable = soNauruBorda ? 1.0 / (1.0 + i) : score;
+					bordaAvailable = score;
 					lastIndex = i;
 					lastRank = f.rank;
 				} else {
-					bordaAvailable += soNauruBorda ? 1.0 / (1.0 + i) : score;
+					bordaAvailable += score;
 				}
 				score--;
 			}

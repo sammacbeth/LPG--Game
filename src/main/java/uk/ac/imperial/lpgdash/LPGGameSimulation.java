@@ -61,6 +61,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "seed")
 	public int seed;
 
+	@Parameter(name = "ratelimit")
+	public boolean ratelimit;
+
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
 	}
@@ -115,6 +118,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 			LegitimateClaims lc = new LegitimateClaims(c, session, this.game);
 			lc.setStorage(storage);
 			lc.setGamma(gamma);
+			lc.ratelimit = ratelimit;
 			session.insert(lc);
 		}
 		for (int n = 0; n < cCount; n++) {
