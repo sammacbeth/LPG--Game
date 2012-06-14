@@ -63,7 +63,7 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`rTotal` double NOT NULL,"
 							+ "`satisfaction` double NOT NULL,"
 							+ "`U` double NOT NULL,"
-							+ "`cluster` int(11) NOT NULL"
+							+ "`cluster` int(11) NOT NULL,"
 							+ "PRIMARY KEY (`simID`,`player`,`round`),"
 							+ "KEY `simID` (`simID`),"
 							+ "KEY `player` (`player`),"
@@ -92,8 +92,9 @@ public class LPGDashStorage extends SqlStorage {
 			createTables
 					.execute("CREATE TABLE IF NOT EXISTS `simulationFairness` ("
 							+ "`simID` bigint(20) NOT NULL,"
+							+ "`cluster` int(11) NOT NULL,"
 							+ "`fairness` double NOT NULL,"
-							+ "PRIMARY KEY (`simID`),"
+							+ "PRIMARY KEY (`simID`, `cluster`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 			createTables
@@ -102,21 +103,24 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`player` varchar(10) NOT NULL,"
 							+ "`cluster` int(11) NOT NULL,"
 							+ "`USum` double NOT NULL,"
-							+ "PRIMARY KEY (`simID`, `player`),"
+							+ "PRIMARY KEY (`simID`, `player`,`cluster`),"
 							+ "KEY `simID` (`simID`),"
 							+ "KEY `player` (`player`),"
+							+ "KEY `cluster` (`cluster`),"
+							+ "KEY `simID-cluster` (`simID`, `cluster`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 			createTables
 					.execute("CREATE TABLE IF NOT EXISTS `simulationSummary` ("
 							+ "`ID` bigint(20) NOT NULL,"
 							+ "`Name` varchar(255) NOT NULL,"
+							+ "`cluster` int(11) NOT NULL,"
 							+ "`ut. C` double NOT NULL,"
 							+ "`ut. NC` double NOT NULL,"
 							+ "`rem. C` int NOT NULL,"
 							+ "`rem. NC` int NOT NULL,"
 							+ "`fairness` double NOT NULL,"
-							+ "PRIMARY KEY (`ID`),"
+							+ "PRIMARY KEY (`ID`, `cluster`),"
 							+ "KEY `Name` (`Name`),"
 							+ "FOREIGN KEY (`ID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
