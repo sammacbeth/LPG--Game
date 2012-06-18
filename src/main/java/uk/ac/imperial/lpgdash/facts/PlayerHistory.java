@@ -1,12 +1,17 @@
 package uk.ac.imperial.lpgdash.facts;
 
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
+
 public class PlayerHistory {
 
 	double averageAllocated = 0;
+	public SummaryStatistics allocations = new SummaryStatistics();
 	int roundsAllocated = 0;
 	double averageDemanded = 0;
+	public SummaryStatistics demands = new SummaryStatistics();
 	double satisfaction = 0.5;
 	double averageProvided = 0;
+	public SummaryStatistics provisions = new SummaryStatistics();
 	int roundsParticipated = 0;
 	int roundsAsHead = 0;
 	int compliantRounds = 0;
@@ -16,7 +21,7 @@ public class PlayerHistory {
 	}
 
 	public double getAverageAllocated() {
-		return averageAllocated;
+		return allocations.getMean();
 	}
 
 	public void setAverageAllocated(double averageAllocated) {
@@ -31,8 +36,12 @@ public class PlayerHistory {
 		this.roundsAllocated = roundsAllocated;
 	}
 
+	public void incrementRoundsAllocated() {
+		this.roundsAllocated++;
+	}
+
 	public double getAverageDemanded() {
-		return averageDemanded;
+		return demands.getMean();
 	}
 
 	public void setAverageDemanded(double averageDemanded) {
@@ -48,7 +57,7 @@ public class PlayerHistory {
 	}
 
 	public double getAverageProvided() {
-		return averageProvided;
+		return provisions.getMean();
 	}
 
 	public void setAverageProvided(double averageProvided) {
@@ -63,12 +72,20 @@ public class PlayerHistory {
 		this.roundsParticipated = roundsParticipated;
 	}
 
+	public void incrementRoundsParticipated() {
+		roundsParticipated++;
+	}
+
 	public int getRoundsAsHead() {
 		return roundsAsHead;
 	}
 
 	public void setRoundsAsHead(int roundsAsHead) {
 		this.roundsAsHead = roundsAsHead;
+	}
+
+	public void incrementRoundsAsHead() {
+		roundsAsHead++;
 	}
 
 	public int getCompliantRounds() {
@@ -79,12 +96,16 @@ public class PlayerHistory {
 		this.compliantRounds = compliantRounds;
 	}
 
+	public void incrementCompliantRounds() {
+		compliantRounds++;
+	}
+
 	@Override
 	public String toString() {
-		return "PlayerHistory [averageAllocated=" + averageAllocated
+		return "PlayerHistory [averageAllocated=" + getAverageAllocated()
 				+ ", roundsAllocated=" + roundsAllocated + ", averageDemanded="
-				+ averageDemanded + ", satisfaction=" + satisfaction
-				+ ", averageProvided=" + averageProvided
+				+ getAverageDemanded() + ", satisfaction=" + satisfaction
+				+ ", averageProvided=" + getAverageProvided()
 				+ ", roundsParticipated=" + roundsParticipated
 				+ ", roundsAsHead=" + roundsAsHead + ", compliantRounds="
 				+ compliantRounds + "]";

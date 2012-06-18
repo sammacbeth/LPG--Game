@@ -11,6 +11,11 @@ import uk.ac.imperial.lpgdash.allocators.LegitimateClaims
 
 global org.apache.log4j.Logger logger
 
+declare LoggedHistory
+	@role( event )
+	act: Object @key
+end
+
 query lcCluster(Cluster c)
 	Cluster( this == c, allocationMethod in (
 		Allocation.LC_FIXED,
@@ -46,37 +51,23 @@ rule "Create PlayerHistory"
 		}
 end
 
-rule "Update allocation history"
+rule "Update allocation history new"
 	when
-		$joined : JoinCluster( $p : player, $c : cluster )
-		lcCluster( $c ;)
+		JoinCluster( $p : player, $c : cluster, $t : t)
+		not LeaveCluster( cluster == $c, player == $p, $t < t )
 		MemberOf( player == $p, cluster == $c )
-		not LeaveCluster( cluster == $c, player == $p )
-		accumulate( Allocate( player == $p, this after $joined, $q : quantity ), 
-			$allocated	: average($q)
-		)
+		lcCluster( $c ;)
+		$a : Allocate( player == $p, $q : quantity, $t < t )
+		not LoggedHistory( $a ;)
 	then
-		modify( $p ) {
-			getHistory().get($c).setAverageAllocated( $allocated.doubleValue() )
-		}
+		PlayerHistory hist = $p.getHistory().get($c);
+		hist.allocations.addValue( $q );
+		if($q > 0)
+			hist.incrementRoundsAllocated();
+		insert( new LoggedHistory( $a ) );
 end
 
-rule "Update allocation count history"
-	when
-		$joined : JoinCluster( $p : player, $c : cluster )
-		lcCluster( $c ;)
-		MemberOf( player == $p, cluster == $c )
-		not LeaveCluster( cluster == $c, player == $p )
-		accumulate( Allocate( player == $p, this after $joined, $q : quantity, quantity > 0 ), 
-			$roundsWithAllocation : count($q)
-		)
-	then
-		modify( $p ) {
-			getHistory().get($c).setRoundsAllocated( $roundsWithAllocation.intValue() )
-		}
-end
-
-rule "Update demand history"
+/*rule "Update demand history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
 		lcCluster( $c ;)
@@ -89,9 +80,24 @@ rule "Update demand history"
 		modify( $p ) {
 			getHistory().get($c).setAverageDemanded( $demanded.doubleValue() )
 		}
+end*/
+
+rule "Update demand history new"
+	when
+		JoinCluster( $p : player, $c : cluster, $t : t)
+		not LeaveCluster( cluster == $c, player == $p, $t < t )
+		MemberOf( player == $p, cluster == $c )
+		lcCluster( $c ;)
+		$d : Demand( player == $p, $q : quantity, $t < t )
+		not LoggedHistory( $d ;)
+	then
+		PlayerHistory hist = $p.getHistory().get($c);
+		hist.demands.addValue( $q );
+		insert( new LoggedHistory( $d ) );
+		//logger.info( "Average Demand: "+ hist.demands.getMean() +", "+ $p );
 end
 
-rule "Update provision history"
+/*rule "Update provision history"
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
 		lcCluster( $c ;)
@@ -106,9 +112,26 @@ rule "Update provision history"
 			getHistory().get($c).setAverageProvided( $provided.doubleValue() ),
 			getHistory().get($c).setRoundsParticipated( $rounds.intValue() )
 		}
+end*/
+
+rule "Update provision history new"
+	when
+		JoinCluster( $p : player, $c : cluster, $t : t)
+		not LeaveCluster( cluster == $c, player == $p, $t < t )
+		MemberOf( player == $p, cluster == $c )
+		lcCluster( $c ;)
+		$d : Provision( player == $p, $q : quantity, $t < t )
+		not LoggedHistory( $d ;)
+	then
+		PlayerHistory hist = $p.getHistory().get($c);
+		hist.provisions.addValue( $q );
+		hist.incrementRoundsParticipated();
+		insert( new LoggedHistory( $d ) );
+		//logger.info( "Average Provision: "+ hist.provisions.getMean() +", "+ $p );
+		//logger.info( "Rounds participated: "+ hist.getRoundsParticipated() +", "+ $p );
 end
 
-rule "Count rounds as head"
+/*rule "Count rounds as head"
 	no-loop
 	when
 		$joined : JoinCluster( $p : player, $c : cluster )
@@ -122,9 +145,24 @@ rule "Count rounds as head"
 		modify( $p ) {
 			getHistory().get($c).setRoundsAsHead( $rounds.intValue() )
 		}
+end*/
+
+rule "Count rounds as head new"
+	when
+		JoinCluster( $p : player, $c : cluster, $t : t)
+		not LeaveCluster( cluster == $c, player == $p, $t < t )
+		MemberOf( player == $p, cluster == $c )
+		lcCluster( $c ;)
+		$h : IsHead( player == $p, cluster == $c, $t < time )
+		not LoggedHistory( $h ;)
+	then
+		PlayerHistory hist = $p.getHistory().get($c);
+		hist.incrementRoundsAsHead();
+		insert( new LoggedHistory( $h ) );
+		//logger.info( "Rounds as head: "+ hist.getRoundsAsHead() +", "+ $p );
 end
 
-rule "Count compliant rounds"
+/*rule "Count compliant rounds"
 	when
 		$joined : JoinCluster( $player : player, $c : cluster, $tJoined : t )
 		lcCluster( $c ;)
@@ -147,6 +185,20 @@ rule "Count compliant rounds"
 		modify( $player ) {
 			getHistory().get($c).setCompliantRounds( $rounds.intValue() )
 		}
+end*/
+
+rule "Count compliant rounds new"
+	when
+		JoinCluster( $p : player, $c : cluster, $tJoin : t)
+		not LeaveCluster( cluster == $c, player == $p, $tJoin < t )
+		MemberOf( player == $p, cluster == $c )
+		lcCluster( $c ;)
+		Round( $t : number, type == RoundType.APPROPRIATE )
+		compliantRound( $c , $p, $t ;) 
+	then
+		PlayerHistory hist = $p.getHistory().get($c);
+		hist.incrementCompliantRounds();
+		//logger.info( "Compliant rounds: "+ hist.getCompliantRounds() +", "+ $p );
 end
 
 rule "Calculate satisfaction from previous round"
