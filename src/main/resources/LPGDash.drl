@@ -22,22 +22,27 @@ declare Round
 end
 
 declare Provision
+	@expires( 10s )
 	@role( event )
 end
 
 declare Demand
+	@expires( 10s )
 	@role( event )
 end
 
 declare Generate
+	@expires( 10s )
 	@role( event )
 end
 
 declare Allocate
+	@expires( 10s )
 	@role( event )
 end
 
 declare Appropriate
+	@expires( 10s )
 	@role( event )
 end
 
@@ -69,6 +74,10 @@ declare IsHead
 	player : Player		@key
 	cluster : Cluster	@key
 	time : int 			@key
+end
+
+query getMemberOf(Player p)
+	m : MemberOf( player == p )
 end
 
 rule "Discard Rounds"

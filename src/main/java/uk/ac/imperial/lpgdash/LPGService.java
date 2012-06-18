@@ -11,6 +11,8 @@ import java.util.UUID;
 import org.apache.log4j.Logger;
 import org.drools.runtime.ObjectFilter;
 import org.drools.runtime.StatefulKnowledgeSession;
+import org.drools.runtime.rule.QueryResults;
+import org.drools.runtime.rule.QueryResultsRow;
 
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.MemberOf;
@@ -81,29 +83,18 @@ public class LPGService extends EnvironmentService {
 	}
 
 	private synchronized MemberOf getMemberOf(final UUID id) {
-		if (!members.containsKey(id)) {
-			buildMembersCache();
-		}
 		MemberOf m = members.get(id);
-		if (m != null && session.getFactHandle(m) == null) {
-			buildMembersCache();
-			return members.get(id);
+		if (m == null || session.getFactHandle(m) == null) {
+			members.remove(id);
+			QueryResults results = session.getQueryResults("getMemberOf",
+					new Object[] { getPlayer(id) });
+			for (QueryResultsRow row : results) {
+				members.put(id, (MemberOf) row.get("m"));
+				return members.get(id);
+			}
+			return null;
 		}
 		return m;
-	}
-
-	private synchronized void buildMembersCache() {
-		members.clear();
-		Collection<Object> rawMembers = session.getObjects(new ObjectFilter() {
-			@Override
-			public boolean accept(Object object) {
-				return object instanceof MemberOf;
-			}
-		});
-		for (Object mObj : rawMembers) {
-			MemberOf m = (MemberOf) mObj;
-			members.put(m.player.getId(), m);
-		}
 	}
 
 	public RoundType getRound() {
