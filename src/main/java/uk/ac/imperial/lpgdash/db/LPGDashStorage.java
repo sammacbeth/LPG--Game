@@ -94,6 +94,9 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`simID` bigint(20) NOT NULL,"
 							+ "`cluster` int(11) NOT NULL,"
 							+ "`fairness` double NOT NULL,"
+							+ "`fairness2` double NULL,"
+							+ "`fairness2 C` double NULL,"
+							+ "`fairness2 NC` double NULL,"
 							+ "PRIMARY KEY (`simID`, `cluster`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
@@ -123,6 +126,9 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`rem. C` int NOT NULL,"
 							+ "`rem. NC` int NOT NULL,"
 							+ "`fairness` double NOT NULL,"
+							+ "`fairness2` double NULL,"
+							+ "`fairness2 C` double NULL,"
+							+ "`fairness2 NC` double NULL,"
 							+ "PRIMARY KEY (`ID`, `cluster`),"
 							+ "KEY `Name` (`Name`),"
 							+ "FOREIGN KEY (`ID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
