@@ -43,7 +43,8 @@ public class LegitimateClaims {
 	private final double[] weights;
 	private double gamma = 0.1;
 
-	public boolean ratelimit = false;
+	public boolean ratelimit = true;
+	public boolean enableHack = true;
 	private boolean soHd = true;
 
 	private final StatefulKnowledgeSession session;
@@ -226,50 +227,52 @@ public class LegitimateClaims {
 		normaliseWeights();
 		logger.info("w*(t) = " + Arrays.toString(weights));
 
-		if (soHd) {
-			int[] fHd = new int[8];
-			for (Canon f : Canon.values()) {
-				fHd[f.ordinal()] = hdFBorda(canonRankings.get(f), bordaPtq);
-			}
-			double averageHd = 0;
-			int totalHd = 0;
-			for (int i = 0; i < fHd.length; i++) {
-				totalHd += fHd[i];
-			}
-			averageHd = totalHd / (double) fHd.length;
-			for (int i = 0; i < fHd.length; i++) {
-				double delta = 0;
-				if (totalHd > 0)
-					delta = weights[i] * (fHd[i] - averageHd) / totalHd;
-				if (ratelimit) {
-					if (delta > 0.0007)
-						delta = 0.0007;
-					else if (delta < -0.0007)
-						delta = -0.0007;
+		if (enableHack) {
+			if (soHd) {
+				int[] fHd = new int[8];
+				for (Canon f : Canon.values()) {
+					fHd[f.ordinal()] = hdFBorda(canonRankings.get(f), bordaPtq);
 				}
-				weights[i] = weights[i] + delta;
-				if (weights[i] < 0 || weights[i] > 1) {
-					logger.info("This shouldn't happen!");
+				double averageHd = 0;
+				int totalHd = 0;
+				for (int i = 0; i < fHd.length; i++) {
+					totalHd += fHd[i];
 				}
-			}
-			normaliseWeights();
-			logger.info("w*(t) = " + Arrays.toString(weights));
-		}
-
-		if (bordaPtq.size() == getCompliantCount()) {
-			final double equalWeight = 1 / (double) weights.length;
-			for (int i = 0; i < weights.length; i++) {
-				if (weights[i] > equalWeight) {
-					weights[i] = weights[i]
-							- (gamma * (weights[i] - equalWeight));
-				} else {
-					weights[i] = weights[i]
-							+ (gamma * (equalWeight - weights[i]));
+				averageHd = totalHd / (double) fHd.length;
+				for (int i = 0; i < fHd.length; i++) {
+					double delta = 0;
+					if (totalHd > 0)
+						delta = weights[i] * (fHd[i] - averageHd) / totalHd;
+					if (ratelimit) {
+						if (delta > 0.0007)
+							delta = 0.0007;
+						else if (delta < -0.0007)
+							delta = -0.0007;
+					}
+					weights[i] = weights[i] + delta;
+					if (weights[i] < 0 || weights[i] > 1) {
+						logger.info("This shouldn't happen!");
+					}
 				}
+				normaliseWeights();
+				logger.info("w*(t) = " + Arrays.toString(weights));
 			}
 
-			normaliseWeights();
-			logger.info("w*(t+1) = " + Arrays.toString(weights));
+			if (bordaPtq.size() == getCompliantCount()) {
+				final double equalWeight = 1 / (double) weights.length;
+				for (int i = 0; i < weights.length; i++) {
+					if (weights[i] > equalWeight) {
+						weights[i] = weights[i]
+								- (gamma * (weights[i] - equalWeight));
+					} else {
+						weights[i] = weights[i]
+								+ (gamma * (equalWeight - weights[i]));
+					}
+				}
+
+				normaliseWeights();
+				logger.info("w*(t+1) = " + Arrays.toString(weights));
+			}
 		}
 		storeWeights();
 	}

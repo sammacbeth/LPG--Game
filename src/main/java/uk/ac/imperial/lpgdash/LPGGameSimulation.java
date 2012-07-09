@@ -62,8 +62,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "seed")
 	public int seed;
 
-	@Parameter(name = "ratelimit")
-	public boolean ratelimit;
+	@Parameter(name = "soHack")
+	public boolean soHack;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -148,7 +148,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 						this.game);
 				lc.setStorage(storage);
 				lc.setGamma(gamma);
-				lc.ratelimit = ratelimit;
+				lc.enableHack = soHack;
 				session.insert(lc);
 			}
 			clusters[i] = c;
