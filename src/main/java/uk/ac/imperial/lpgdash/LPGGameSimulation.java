@@ -65,6 +65,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "soHack")
 	public boolean soHack;
 
+	@Parameter(name = "cheatOn")
+	public String cheatOn;
+
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
 	}
@@ -108,10 +111,11 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("storage", this.storage);
 
 		Cluster[] clusterArr = initClusters();
+		Cheat cheatMethod = getCheatOn();
 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta));
+			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta, cheatMethod));
 			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -120,7 +124,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		}
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta));
+			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta, cheatMethod));
 			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -154,6 +158,15 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 			clusters[i] = c;
 		}
 		return clusters;
+	}
+
+	protected Cheat getCheatOn() {
+		for (Cheat c : Cheat.values()) {
+			if (this.cheatOn.equalsIgnoreCase(c.name())) {
+				return c;
+			}
+		}
+		return Cheat.PROVISION;
 	}
 
 	@Override

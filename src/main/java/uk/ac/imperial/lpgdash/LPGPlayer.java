@@ -36,6 +36,8 @@ public class LPGPlayer extends AbstractParticipant {
 	double beta = .1;
 	double satisfaction = 0.5;
 
+	Cheat cheatOn = Cheat.PROVISION;
+
 	Cluster cluster = null;
 	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
 
@@ -51,6 +53,12 @@ public class LPGPlayer extends AbstractParticipant {
 		this.pCheat = pCheat;
 		this.alpha = alpha;
 		this.beta = beta;
+	}
+
+	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
+			double beta, Cheat cheatOn) {
+		this(id, name, pCheat, alpha, beta);
+		this.cheatOn = cheatOn;
 	}
 
 	@Override
@@ -106,17 +114,33 @@ public class LPGPlayer extends AbstractParticipant {
 			g = game.getG(getID());
 			q = game.getQ(getID());
 
-			if (Random.randomDouble() < pCheat) {
-				// cheat: provision less than g
-				provision(g * Random.randomDouble());
-				demand(q);
+			if ((this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)
+					&& Random.randomDouble() < pCheat) {
+				switch (this.cheatOn) {
+				case PROVISION:
+				default:
+					// cheat: provision less than g
+					provision(g * Random.randomDouble());
+					demand(q);
+					break;
+				case DEMAND:
+					provision(g);
+					demand(q + Random.randomDouble() * (1 - q));
+					break;
+				}
 			} else {
 				provision(g);
 				demand(q);
 			}
 
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
-			appropriate(game.getAllocated(getID()));
+			if (this.cheatOn == Cheat.APPROPRIATE
+					&& Random.randomDouble() < pCheat) {
+				double allocated = game.getAllocated(getID());
+				appropriate(allocated + Random.randomDouble() * (1 - allocated));
+			} else {
+				appropriate(game.getAllocated(getID()));
+			}
 		}
 	}
 

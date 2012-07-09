@@ -184,10 +184,11 @@ rule "Process Allocations"
 end
 
 rule "Process Appropriate"
-	salience -5
+	salience -5 + $alQ
 	when
 		$a : Appropriate( $player : player, $q : quantity )
 		not Processed( $a ;)
+		$al : Allocate( player == $player, $alQ : quantity )
 		MemberOf( player == $player, $c : cluster )
 		$pool : AllocationPool( cluster == $c )
 	then
