@@ -43,6 +43,10 @@ public class LPGPlayer extends AbstractParticipant {
 
 	protected LPGService game;
 
+	boolean newLeave = true;
+	int clusterDissatisfactionCount = 0;
+	int leaveThreshold = 3;
+
 	public LPGPlayer(UUID id, String name) {
 		super(id, name);
 	}
@@ -90,6 +94,7 @@ public class LPGPlayer extends AbstractParticipant {
 		return ss;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute() {
 		super.execute();
@@ -104,7 +109,7 @@ public class LPGPlayer extends AbstractParticipant {
 				// determine utility gained from last round
 				calculateScores();
 			}
-			if (game.getRoundNumber() % 20 == 0) {
+			if (newLeave || game.getRoundNumber() % 20 == 0) {
 				assessClusterMembership();
 				if (this.cluster == null) {
 					return;
@@ -241,14 +246,27 @@ public class LPGPlayer extends AbstractParticipant {
 				preferred = e.getKey();
 			}
 		}
-		if (maxSatisfaction < 0.1) {
-			leaveCluster();
-			this.cluster = null;
-		} else if (!preferred.equals(this.cluster)) {
-			leaveCluster();
-			joinCluster(preferred);
-			this.cluster = preferred;
-			this.satisfaction = clusterSatisfaction.get(preferred);
+		// if satisfaction is below threshold or other cluster's satisfaction
+		// then increment consecutive dissatisfaction count, otherwise reset it
+		// to 0.
+		if (maxSatisfaction < 0.1 || !preferred.equals(this.cluster)) {
+			this.clusterDissatisfactionCount++;
+		} else {
+			this.clusterDissatisfactionCount = 0;
+		}
+		// if we are dissatisfied for greater than the leave threshold, leave or
+		// change cluster.
+		if (!newLeave
+				|| this.clusterDissatisfactionCount >= this.leaveThreshold) {
+			if (maxSatisfaction < 0.1) {
+				leaveCluster();
+				this.cluster = null;
+			} else if (!preferred.equals(this.cluster)) {
+				leaveCluster();
+				joinCluster(preferred);
+				this.cluster = preferred;
+				this.satisfaction = clusterSatisfaction.get(preferred);
+			}
 		}
 	}
 }
