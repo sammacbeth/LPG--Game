@@ -1,5 +1,6 @@
 package uk.ac.imperial.lpgdash.allocators.canons;
 
+import java.util.Collections;
 import java.util.Comparator;
 
 import uk.ac.imperial.lpgdash.facts.Cluster;
@@ -16,5 +17,10 @@ public class F7 extends PlayerHistoryComparator implements
 						o2.getSatisfaction());
 			}
 		});
+	}
+
+	@Override
+	public Canon getCanon() {
+		return Canon.F7;
 	}
 }

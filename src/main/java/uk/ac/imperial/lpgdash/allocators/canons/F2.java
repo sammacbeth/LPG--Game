@@ -18,4 +18,9 @@ public class F2 extends PlayerHistoryComparator implements
 		});
 	}
 
+	@Override
+	public Canon getCanon() {
+		return Canon.F2;
+	}
+
 }

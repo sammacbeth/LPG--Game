@@ -6,4 +6,6 @@ import uk.ac.imperial.lpgdash.facts.Player;
 
 public interface LegitimateClaimsCanon extends Comparator<Player> {
 
+	Canon getCanon();
+
 }

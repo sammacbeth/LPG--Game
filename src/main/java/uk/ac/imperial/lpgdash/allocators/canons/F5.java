@@ -16,4 +16,9 @@ public class F5 extends PlayerHistoryComparator implements
 			}
 		});
 	}
+
+	@Override
+	public Canon getCanon() {
+		return Canon.F5;
+	}
 }

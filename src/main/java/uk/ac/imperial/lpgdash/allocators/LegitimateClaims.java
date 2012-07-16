@@ -1,7 +1,6 @@
 package uk.ac.imperial.lpgdash.allocators;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -40,10 +39,9 @@ public class LegitimateClaims {
 	private final Logger logger = Logger.getLogger(LegitimateClaims.class);
 
 	private final Cluster c;
-	private final double[] weights;
 	private double gamma = 0.1;
 
-	public boolean ratelimit = true;
+	public boolean ratelimit = false;
 	public boolean enableHack = true;
 	private boolean soHd = true;
 
@@ -51,42 +49,51 @@ public class LegitimateClaims {
 	private final LPGService game;
 	private StorageService sto = null;
 
+	private Map<Canon, Double> weight = new HashMap<Canon, Double>();
+	private Map<Canon, LegitimateClaimsCanon> lcCanons = new HashMap<Canon, LegitimateClaimsCanon>();
+
 	public LegitimateClaims(Cluster c, StatefulKnowledgeSession session,
 			LPGService game) {
 		super();
 		this.c = c;
 		this.session = session;
-		switch (c.getAllocationMethod()) {
-		case LC_F1:
-			weights = new double[] { 1, 0, 0, 0, 0, 0, 0, 0 };
-			break;
-		case LC_F1a:
-			weights = new double[] { 0, 1, 0, 0, 0, 0, 0, 0 };
-			break;
-		case LC_F2:
-			weights = new double[] { 0, 0, 1, 0, 0, 0, 0, 0 };
-			break;
-		case LC_F3:
-			weights = new double[] { 0, 0, 0, 1, 0, 0, 0, 0 };
-			break;
-		case LC_F4:
-			weights = new double[] { 0, 0, 0, 0, 1, 0, 0, 0 };
-			break;
-		case LC_F5:
-			weights = new double[] { 0, 0, 0, 0, 0, 1, 0, 0 };
-			break;
-		case LC_F6:
-			weights = new double[] { 0, 0, 0, 0, 0, 0, 1, 0 };
-			break;
-		case LC_F7:
-			weights = new double[] { 0, 0, 0, 0, 0, 0, 0, 1 };
-			break;
-		case LC_SO:
-		case LC_FIXED:
-		default:
-			weights = new double[] { 0.125, 0.125, 0.125, 0.125, 0.125, 0.125,
-					0.125, 0.125 };
-			break;
+
+		Allocation a = c.getAllocationMethod();
+		boolean allCanons = (a == Allocation.LC_FIXED || a == Allocation.LC_SO);
+		if (allCanons || a == Allocation.LC_F1) {
+			weight.put(Canon.F1, 1.0);
+			lcCanons.put(Canon.F1, new F1(c));
+		}
+		if (allCanons || a == Allocation.LC_F1a) {
+			weight.put(Canon.F1a, 1.0);
+			lcCanons.put(Canon.F1a, new F1a(c));
+		}
+		if (allCanons || a == Allocation.LC_F2) {
+			weight.put(Canon.F2, 1.0);
+			lcCanons.put(Canon.F2, new F2(c));
+		}
+		if (allCanons || a == Allocation.LC_F3) {
+			weight.put(Canon.F3, 1.0);
+			lcCanons.put(Canon.F3, new F3(c));
+		}
+		if (allCanons || a == Allocation.LC_F4) {
+			weight.put(Canon.F4, 1.0);
+			lcCanons.put(Canon.F4, new F4(c));
+		}
+		if (allCanons || a == Allocation.LC_F5) {
+			weight.put(Canon.F5, 1.0);
+			lcCanons.put(Canon.F5, new F5(c));
+		}
+		if (allCanons || a == Allocation.LC_F6) {
+			weight.put(Canon.F6, 1.0);
+			lcCanons.put(Canon.F6, new F6(c));
+		}
+		if (allCanons || a == Allocation.LC_F7) {
+			weight.put(Canon.F7, 1.0);
+			lcCanons.put(Canon.F7, new F7(c));
+		}
+		if (allCanons) {
+			normaliseWeights();
 		}
 		this.game = game;
 	}
@@ -105,41 +112,14 @@ public class LegitimateClaims {
 
 	@Override
 	public String toString() {
-		return "LegitimateClaims [c=" + c + ", weights="
-				+ Arrays.toString(weights) + "]";
+		return "LegitimateClaims [c=" + c + ", weights=" + weight.toString()
+				+ "]";
 	}
 
 	private List<Player> getFunctionRanking(Canon f, List<Player> players) {
 		List<Player> rankedPlayers = new ArrayList<Player>(players);
 		Collections.shuffle(rankedPlayers);
-		LegitimateClaimsCanon canon;
-		switch (f) {
-		case F1:
-			canon = new F1(c);
-			break;
-		case F1a:
-			canon = new F1a(c);
-			break;
-		case F2:
-			canon = new F2(c);
-			break;
-		case F3:
-			canon = new F3(c);
-			break;
-		case F4:
-			canon = new F4(c);
-			break;
-		case F5:
-			canon = new F5(c);
-			break;
-		case F6:
-			canon = new F6(c);
-			break;
-		case F7:
-		default:
-			canon = new F7(c);
-			break;
-		}
+		LegitimateClaimsCanon canon = lcCanons.get(f);
 		Collections.sort(rankedPlayers, canon);
 		return rankedPlayers;
 	}
@@ -148,7 +128,7 @@ public class LegitimateClaims {
 
 		Map<Canon, List<Player>> rankOrders = new HashMap<Canon, List<Player>>();
 		players = new ArrayList<Player>(players);
-		for (Canon f : Canon.values()) {
+		for (Canon f : lcCanons.keySet()) {
 			rankOrders.put(f, getFunctionRanking(f, players));
 		}
 
@@ -199,79 +179,78 @@ public class LegitimateClaims {
 
 	private double getScore(BordaRank r, int nPlayers) {
 		double score = 0;
-		Canon[] canons = Canon.values();
-		for (int i = 0; i < weights.length; i++) {
-			score += weights[i] * (nPlayers - r.get(canons[i]));
+		for (Canon canon : weight.keySet()) {
+			score += weight.get(canon) * (nPlayers - r.get(canon));
 		}
 		return score;
 	}
 
 	private void updateWeights(List<BordaRank> bordaPtq,
 			Map<Canon, List<Player>> canonRankings) {
-		double[] fBorda = fBorda(bordaPtq);
+		Map<Canon, Double> fBorda = fBorda(bordaPtq);
 
-		logger.info("Borda(f, C) = " + Arrays.toString(fBorda));
+		logger.info("Borda(f, C) = " + fBorda.toString());
 
 		// update weights
 		double averageBorda = 0;
 		double totalBorda = 0;
-		for (int i = 0; i < fBorda.length; i++) {
-			totalBorda += fBorda[i];
+		for (Double v : fBorda.values()) {
+			totalBorda += v;
 		}
-		averageBorda = totalBorda / fBorda.length;
-		for (int i = 0; i < fBorda.length; i++) {
-			weights[i] = weights[i]
-					+ (weights[i] * (fBorda[i] - averageBorda) / totalBorda);
+		averageBorda = totalBorda / fBorda.size();
+
+		for (Map.Entry<Canon, Double> fb : fBorda.entrySet()) {
+			Double w = weight.get(fb.getKey());
+			weight.put(fb.getKey(), w
+					+ (w * (fb.getValue() - averageBorda) / totalBorda));
 		}
 
 		normaliseWeights();
-		logger.info("w*(t) = " + Arrays.toString(weights));
+		logger.info("w*(t) = " + weight.toString());
 
 		if (enableHack) {
 			if (soHd) {
-				int[] fHd = new int[8];
-				for (Canon f : Canon.values()) {
-					fHd[f.ordinal()] = hdFBorda(canonRankings.get(f), bordaPtq);
+				Map<Canon, Integer> fHd = new HashMap<Canon, Integer>();
+				for (Canon f : weight.keySet()) {
+					fHd.put(f, hdFBorda(canonRankings.get(f), bordaPtq));
 				}
 				double averageHd = 0;
 				int totalHd = 0;
-				for (int i = 0; i < fHd.length; i++) {
-					totalHd += fHd[i];
+				for (int v : fHd.values()) {
+					totalHd += v;
 				}
-				averageHd = totalHd / (double) fHd.length;
-				for (int i = 0; i < fHd.length; i++) {
+				averageHd = totalHd / (double) fHd.size();
+				for (Map.Entry<Canon, Integer> f : fHd.entrySet()) {
+					Canon c = f.getKey();
 					double delta = 0;
 					if (totalHd > 0)
-						delta = weights[i] * (fHd[i] - averageHd) / totalHd;
+						delta = weight.get(c) * (fHd.get(c) - averageHd)
+								/ totalHd;
 					if (ratelimit) {
 						if (delta > 0.0007)
 							delta = 0.0007;
 						else if (delta < -0.0007)
 							delta = -0.0007;
 					}
-					weights[i] = weights[i] + delta;
-					if (weights[i] < 0 || weights[i] > 1) {
-						logger.info("This shouldn't happen!");
-					}
+					weight.put(c, weight.get(c) + delta);
 				}
 				normaliseWeights();
-				logger.info("w*(t) = " + Arrays.toString(weights));
+				logger.info("w*(t) = " + weight.toString());
 			}
 
 			if (bordaPtq.size() == getCompliantCount()) {
-				final double equalWeight = 1 / (double) weights.length;
-				for (int i = 0; i < weights.length; i++) {
-					if (weights[i] > equalWeight) {
-						weights[i] = weights[i]
-								- (gamma * (weights[i] - equalWeight));
+				final double equalWeight = 1 / (double) weight.size();
+				for (Canon c : weight.keySet()) {
+					Double w = weight.get(c);
+					if (w > equalWeight) {
+						weight.put(c, w - (gamma * (w - equalWeight)));
 					} else {
-						weights[i] = weights[i]
-								+ (gamma * (equalWeight - weights[i]));
+						weight.put(c, w + (gamma * (equalWeight - w)));
 					}
 				}
 
 				normaliseWeights();
-				logger.info("w*(t+1) = " + Arrays.toString(weights));
+				logger.info("w*(t+1) = " + weight.toString());
 			}
 		}
 		storeWeights();
@@ -279,22 +258,25 @@ public class LegitimateClaims {
 
 	private void normaliseWeights() {
 		double weightsSum = 0.0;
-		for (int i = 0; i < weights.length; i++) {
-			weightsSum += weights[i];
+		for (Double w : weight.values()) {
+			weightsSum += w;
 		}
-		for (int i = 0; i < weights.length; i++) {
-			weights[i] *= 1 / weightsSum;
+		for (Map.Entry<Canon, Double> w : weight.entrySet()) {
+			weight.put(w.getKey(), w.getValue() / weightsSum);
 		}
 	}
 
-	double[] fBorda(List<BordaRank> bordaPtq) {
-		double[] fBorda = new double[8];
-		Arrays.fill(fBorda, 0.0);
+	Map<Canon, Double> fBorda(List<BordaRank> bordaPtq) {
+		Map<Canon, Double> fBorda = new HashMap<Canon, Double>();
+
+		for (Canon c : weight.keySet()) {
+			fBorda.put(c, 0.0);
+		}
 
 		// calculate Borda(f, C)
 		for (BordaRank p : bordaPtq) {
 			List<FunctionRank> playerRanks = new ArrayList<LegitimateClaims.FunctionRank>();
-			for (Canon f : Canon.values()) {
+			for (Canon f : weight.keySet()) {
 				playerRanks.add(new FunctionRank(f, p.get(f)));
 			}
 
@@ -303,7 +285,7 @@ public class LegitimateClaims {
 			double bordaAvailable = 0;
 			int lastIndex = 0;
 			int lastRank = 0;
-			int score = Canon.values().length;
+			int score = weight.size();
 			for (int i = 0; i <= playerRanks.size(); i++) {
 				FunctionRank f;
 				if (i == playerRanks.size())
@@ -318,7 +300,7 @@ public class LegitimateClaims {
 					double bordaPerFn = ((double) bordaAvailable) / fnCount;
 					for (int j = lastIndex; j < i; j++) {
 						FunctionRank fAdd = playerRanks.get(j);
-						fBorda[fAdd.f.ordinal()] += bordaPerFn;
+						fBorda.put(fAdd.f, fBorda.get(fAdd.f) + bordaPerFn);
 					}
 
 					bordaAvailable = score;
@@ -371,22 +353,10 @@ public class LegitimateClaims {
 		if (sto != null) {
 			TransientAgentState s = sto.getAgentState(r.getPlayer().getId(),
 					game.getRoundNumber());
-			s.setProperty("f1",
-					Double.toString(weights[0] * (n - r.get(Canon.F1))));
-			s.setProperty("f1a",
-					Double.toString(weights[1] * (n - r.get(Canon.F1a))));
-			s.setProperty("f2",
-					Double.toString(weights[2] * (n - r.get(Canon.F2))));
-			s.setProperty("f3",
-					Double.toString(weights[3] * (n - r.get(Canon.F3))));
-			s.setProperty("f4",
-					Double.toString(weights[4] * (n - r.get(Canon.F4))));
-			s.setProperty("f5",
-					Double.toString(weights[5] * (n - r.get(Canon.F5))));
-			s.setProperty("f6",
-					Double.toString(weights[6] * (n - r.get(Canon.F6))));
-			s.setProperty("f7",
-					Double.toString(weights[7] * (n - r.get(Canon.F7))));
+			for (Canon ca : weight.keySet()) {
+				s.setProperty(ca.name(),
+						Double.toString(weight.get(ca) * (n - r.get(ca))));
+			}
 		}
 	}
 
@@ -394,9 +364,9 @@ public class LegitimateClaims {
 		if (sto != null) {
 			PersistentEnvironment e = sto.getSimulation().getEnvironment();
 			int round = game.getRoundNumber();
-			for (Canon f : Canon.values()) {
-				e.setProperty("w_" + f, round,
-						Double.toString(weights[f.ordinal()]));
+			for (Map.Entry<Canon, Double> w : weight.entrySet()) {
+				e.setProperty("w_" + w.getKey(), round,
+						Double.toString(w.getValue()));
 			}
 		}
 	}
