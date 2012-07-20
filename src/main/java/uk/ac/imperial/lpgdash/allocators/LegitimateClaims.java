@@ -16,14 +16,14 @@ import org.drools.runtime.rule.Variable;
 import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
 import uk.ac.imperial.lpgdash.allocators.canons.Canon;
-import uk.ac.imperial.lpgdash.allocators.canons.F1;
 import uk.ac.imperial.lpgdash.allocators.canons.F1a;
+import uk.ac.imperial.lpgdash.allocators.canons.F7;
 import uk.ac.imperial.lpgdash.allocators.canons.F2;
 import uk.ac.imperial.lpgdash.allocators.canons.F3;
 import uk.ac.imperial.lpgdash.allocators.canons.F4;
 import uk.ac.imperial.lpgdash.allocators.canons.F5;
 import uk.ac.imperial.lpgdash.allocators.canons.F6;
-import uk.ac.imperial.lpgdash.allocators.canons.F7;
+import uk.ac.imperial.lpgdash.allocators.canons.F1b;
 import uk.ac.imperial.lpgdash.allocators.canons.LegitimateClaimsCanon;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
@@ -61,12 +61,12 @@ public class LegitimateClaims {
 		Allocation a = c.getAllocationMethod();
 		boolean allCanons = (a == Allocation.LC_FIXED || a == Allocation.LC_SO);
 		if (allCanons || a == Allocation.LC_F1) {
-			weight.put(Canon.F1, 1.0);
-			lcCanons.put(Canon.F1, new F1(c));
-		}
-		if (allCanons || a == Allocation.LC_F1a) {
 			weight.put(Canon.F1a, 1.0);
 			lcCanons.put(Canon.F1a, new F1a(c));
+		}
+		if (allCanons || a == Allocation.LC_F1a) {
+			weight.put(Canon.F1b, 1.0);
+			lcCanons.put(Canon.F1b, new F1b(c));
 		}
 		if (allCanons || a == Allocation.LC_F2) {
 			weight.put(Canon.F2, 1.0);

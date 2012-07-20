@@ -10,9 +10,11 @@ public class F1a extends PlayerHistoryComparator implements
 
 	public F1a(Cluster c) {
 		super(c, new Comparator<PlayerHistory>() {
+
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return o1.getRoundsAllocated() - o2.getRoundsAllocated();
+				return Double.compare(o1.getAverageAllocated(),
+						o2.getAverageAllocated());
 			}
 		});
 	}
