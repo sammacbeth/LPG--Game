@@ -33,14 +33,14 @@ public class Cluster {
 	}
 
 	public boolean isLC() {
-		return allocationMethod == Allocation.LC_F1
-				|| allocationMethod == Allocation.LC_F1a
+		return allocationMethod == Allocation.LC_F1a
+				|| allocationMethod == Allocation.LC_F1b
+				|| allocationMethod == Allocation.LC_F1c
 				|| allocationMethod == Allocation.LC_F2
 				|| allocationMethod == Allocation.LC_F3
 				|| allocationMethod == Allocation.LC_F4
 				|| allocationMethod == Allocation.LC_F5
 				|| allocationMethod == Allocation.LC_F6
-				|| allocationMethod == Allocation.LC_F7
 				|| allocationMethod == Allocation.LC_FIXED
 				|| allocationMethod == Allocation.LC_SO;
 	}

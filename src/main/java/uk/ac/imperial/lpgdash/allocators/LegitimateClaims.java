@@ -17,7 +17,7 @@ import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
 import uk.ac.imperial.lpgdash.allocators.canons.Canon;
 import uk.ac.imperial.lpgdash.allocators.canons.F1a;
-import uk.ac.imperial.lpgdash.allocators.canons.F7;
+import uk.ac.imperial.lpgdash.allocators.canons.F1c;
 import uk.ac.imperial.lpgdash.allocators.canons.F2;
 import uk.ac.imperial.lpgdash.allocators.canons.F3;
 import uk.ac.imperial.lpgdash.allocators.canons.F4;
@@ -60,13 +60,17 @@ public class LegitimateClaims {
 
 		Allocation a = c.getAllocationMethod();
 		boolean allCanons = (a == Allocation.LC_FIXED || a == Allocation.LC_SO);
-		if (allCanons || a == Allocation.LC_F1) {
+		if (allCanons || a == Allocation.LC_F1a) {
 			weight.put(Canon.F1a, 1.0);
 			lcCanons.put(Canon.F1a, new F1a(c));
 		}
-		if (allCanons || a == Allocation.LC_F1a) {
+		if (allCanons || a == Allocation.LC_F1b) {
 			weight.put(Canon.F1b, 1.0);
 			lcCanons.put(Canon.F1b, new F1b(c));
+		}
+		if (allCanons || a == Allocation.LC_F1c) {
+			weight.put(Canon.F1c, 1.0);
+			lcCanons.put(Canon.F1c, new F1c(c));
 		}
 		if (allCanons || a == Allocation.LC_F2) {
 			weight.put(Canon.F2, 1.0);
@@ -87,10 +91,6 @@ public class LegitimateClaims {
 		if (allCanons || a == Allocation.LC_F6) {
 			weight.put(Canon.F6, 1.0);
 			lcCanons.put(Canon.F6, new F6(c));
-		}
-		if (allCanons || a == Allocation.LC_F7) {
-			weight.put(Canon.F7, 1.0);
-			lcCanons.put(Canon.F7, new F7(c));
 		}
 		if (allCanons) {
 			normaliseWeights();
