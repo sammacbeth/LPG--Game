@@ -77,14 +77,14 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`simID` bigint(20) NOT NULL,"
 							+ "`round` int(11) NOT NULL,"
 							+ "`fairness` double NOT NULL,"
-							+ "`w_f1` double DEFAULT NULL,"
 							+ "`w_f1a` double DEFAULT NULL,"
+							+ "`w_f1b` double DEFAULT NULL,"
+							+ "`w_f1c` double DEFAULT NULL,"
 							+ "`w_f2` double DEFAULT NULL,"
 							+ "`w_f3` double DEFAULT NULL,"
 							+ "`w_f4` double DEFAULT NULL,"
 							+ "`w_f5` double DEFAULT NULL,"
 							+ "`w_f6` double DEFAULT NULL,"
-							+ "`w_f7` double DEFAULT NULL,"
 							+ "PRIMARY KEY (`simID`,`round`),"
 							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE"
 							+ ")");
@@ -122,7 +122,7 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`stddev ut. C` double NOT NULL,"
 							+ "`ut. NC` double NOT NULL,"
 							+ "`stddev ut. NC` double NOT NULL,"
-							+ "`total ut.` double NOT NULL," 
+							+ "`total ut.` double NOT NULL,"
 							+ "`rem. C` int NOT NULL,"
 							+ "`rem. NC` int NOT NULL,"
 							+ "`fairness` double NOT NULL,"
@@ -153,7 +153,7 @@ public class LPGDashStorage extends SqlStorage {
 		try {
 			insertRound = conn
 					.prepareStatement("REPLACE INTO roundGlobals "
-							+ "(simID, round, fairness, w_f1, w_f1a, w_f2, w_f3, w_f4, w_f5, w_f6, w_f7)"
+							+ "(simID, round, fairness, w_f1a, w_f1b, w_f1c, w_f2, w_f3, w_f4, w_f5, w_f6)"
 							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
 		} catch (SQLException e) {
 			logger.warn(e);
@@ -179,7 +179,7 @@ public class LPGDashStorage extends SqlStorage {
 					insertRound.setDouble(3,
 							getProperty(props, "c0-fairness", 0));
 
-					String[] canons = { "w_F1", "w_F1a", "w_F2", "w_F3",
+					String[] canons = { "w_F1a", "w_F1b", "w_F2", "w_F3",
 							"w_F4", "w_F5", "w_F6", "w_F7" };
 					for (int i = 0; i < canons.length; i++) {
 						if (props.containsKey(canons[i]))
