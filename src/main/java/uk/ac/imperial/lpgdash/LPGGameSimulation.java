@@ -115,7 +115,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta, cheatMethod));
+			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta,
+					cheatMethod));
 			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -124,7 +125,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		}
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
-			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha, beta, cheatMethod));
+			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha,
+					beta, cheatMethod));
 			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -138,13 +140,16 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		Cluster[] clusters = new Cluster[clusterNames.length];
 		int clusterCtr = 0;
 		for (int i = 0; i < clusterNames.length; i++) {
-			Allocation method = Allocation.RANDOM;
+			Allocation method = null;
 			for (Allocation a : Allocation.values()) {
 				if (clusterNames[i].equalsIgnoreCase(a.name())) {
 					method = a;
 					break;
 				}
 			}
+			if (method == null)
+				throw new RuntimeException("Unknown allocation method '"
+						+ clusterNames[i] + "', could not create cluster!");
 			Cluster c = new Cluster(clusterCtr++, method);
 			session.insert(c);
 			if (c.isLC()) {
