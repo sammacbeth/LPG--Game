@@ -29,11 +29,9 @@ def add_parameter(con, simId, key, value):
 def lc_comparison(args):
 	con = connect_mysql(args)
 	for seed in range(args.repeats):
-		for cluster in ['lc_f1','lc_f1a','lc_f2','lc_f3','lc_f4','lc_f5','lc_f6','lc_f7','lc_fix','lc_so']:
+		for cluster in ['lc_f1a','lc_f1b','lc_f1c','lc_f2','lc_f3','lc_f4','lc_f5','lc_f6','lc_fixed','lc_so']:
 			rounds = '1002'
-			if cluster != 'lc_fix' and cluster != 'lc_so':
-				continue
-			simID = insert_simulation(con, "{}_revf7".format(cluster), rounds)
+			simID = insert_simulation(con, "{}".format(cluster), rounds)
 			add_parameter(con, simID, 'finishTime', rounds)
 			add_parameter(con, simID, 'alpha', '0.1')
 			add_parameter(con, simID, 'beta', '0.1')
@@ -50,7 +48,7 @@ def lc_comparison(args):
 def het_hom(args):
 	con = connect_mysql(args)
 	for seed in range(args.repeats):
-		for cluster in ['ration','random','lc_fix','lc_so']:
+		for cluster in ['ration','random','lc_fixed','lc_so']:
 			for pop in ['het01','hom01','hom04']:
 				rounds = '1002'
 				beta = '0.1'
@@ -61,7 +59,7 @@ def het_hom(args):
 				if pop == 'het01':
 					c = 20
 					cPCheat = 0.02
-				simID = insert_simulation(con, "{0}_{1}_revf7".format(cluster, pop), rounds)
+				simID = insert_simulation(con, "{0}_{1}".format(cluster, pop), rounds)
 				add_parameter(con, simID, 'finishTime', rounds)
 				add_parameter(con, simID, 'alpha', '0.1')
 				add_parameter(con, simID, 'beta', beta)
@@ -81,7 +79,7 @@ def multi_cluster(args):
 	for seed in range(args.repeats):
 		for beta in ['0.1','0.4']:
 			rounds = '3000'
-			simID = insert_simulation(con, "3_{0}_beta={1}_revf7".format(cluster, beta), rounds)
+			simID = insert_simulation(con, "3_{0}_beta={1}".format(cluster, beta), rounds)
 			add_parameter(con, simID, 'finishTime', rounds)
 			add_parameter(con, simID, 'alpha', '0.1')
 			add_parameter(con, simID, 'beta', beta)
@@ -98,7 +96,7 @@ def multi_cluster(args):
 def nc_proportions(args):
 	con = connect_mysql(args)
 	for seed in range(args.repeats):
-		for cluster in ['random','lc_so']:
+		for cluster in ['random','lc_fixed','lc_so']:
 			for c in [30,27,24,21,18,15,12,9,6,3,0]:
 				rounds = '1002'
 				simID = insert_simulation(con, "{0}_{1}c_{2}nc".format(cluster, c, 30-c), rounds)
