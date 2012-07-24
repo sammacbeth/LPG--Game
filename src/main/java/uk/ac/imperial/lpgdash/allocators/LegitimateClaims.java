@@ -16,14 +16,14 @@ import org.drools.runtime.rule.Variable;
 import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
 import uk.ac.imperial.lpgdash.allocators.canons.Canon;
-import uk.ac.imperial.lpgdash.allocators.canons.F1a;
-import uk.ac.imperial.lpgdash.allocators.canons.F1c;
-import uk.ac.imperial.lpgdash.allocators.canons.F2;
-import uk.ac.imperial.lpgdash.allocators.canons.F3;
-import uk.ac.imperial.lpgdash.allocators.canons.F4;
-import uk.ac.imperial.lpgdash.allocators.canons.F5;
-import uk.ac.imperial.lpgdash.allocators.canons.F6;
-import uk.ac.imperial.lpgdash.allocators.canons.F1b;
+import uk.ac.imperial.lpgdash.allocators.canons.AverageAllocatedAsc;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsAllocatedAsc;
+import uk.ac.imperial.lpgdash.allocators.canons.AverageDemandedAsc;
+import uk.ac.imperial.lpgdash.allocators.canons.AverageProvidedDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsParticipantedDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsAsHeadDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.CompliantRoundsDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.SatisfactionAsc;
 import uk.ac.imperial.lpgdash.allocators.canons.LegitimateClaimsCanon;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
@@ -62,35 +62,35 @@ public class LegitimateClaims {
 		boolean allCanons = (a == Allocation.LC_FIXED || a == Allocation.LC_SO);
 		if (allCanons || a == Allocation.LC_F1a) {
 			weight.put(Canon.F1a, 1.0);
-			lcCanons.put(Canon.F1a, new F1a(c));
+			lcCanons.put(Canon.F1a, new AverageAllocatedAsc(c));
 		}
 		if (allCanons || a == Allocation.LC_F1b) {
 			weight.put(Canon.F1b, 1.0);
-			lcCanons.put(Canon.F1b, new F1b(c));
+			lcCanons.put(Canon.F1b, new SatisfactionAsc(c));
 		}
 		if (allCanons || a == Allocation.LC_F1c) {
 			weight.put(Canon.F1c, 1.0);
-			lcCanons.put(Canon.F1c, new F1c(c));
+			lcCanons.put(Canon.F1c, new RoundsAllocatedAsc(c));
 		}
 		if (allCanons || a == Allocation.LC_F2) {
 			weight.put(Canon.F2, 1.0);
-			lcCanons.put(Canon.F2, new F2(c));
+			lcCanons.put(Canon.F2, new AverageDemandedAsc(c));
 		}
 		if (allCanons || a == Allocation.LC_F3) {
 			weight.put(Canon.F3, 1.0);
-			lcCanons.put(Canon.F3, new F3(c));
+			lcCanons.put(Canon.F3, new AverageProvidedDesc(c));
 		}
 		if (allCanons || a == Allocation.LC_F4) {
 			weight.put(Canon.F4, 1.0);
-			lcCanons.put(Canon.F4, new F4(c));
+			lcCanons.put(Canon.F4, new RoundsParticipantedDesc(c));
 		}
 		if (allCanons || a == Allocation.LC_F5) {
 			weight.put(Canon.F5, 1.0);
-			lcCanons.put(Canon.F5, new F5(c));
+			lcCanons.put(Canon.F5, new RoundsAsHeadDesc(c));
 		}
 		if (allCanons || a == Allocation.LC_F6) {
 			weight.put(Canon.F6, 1.0);
-			lcCanons.put(Canon.F6, new F6(c));
+			lcCanons.put(Canon.F6, new CompliantRoundsDesc(c));
 		}
 		if (allCanons) {
 			normaliseWeights();

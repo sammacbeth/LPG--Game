@@ -5,21 +5,21 @@ import java.util.Comparator;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.PlayerHistory;
 
-public class F1b extends PlayerHistoryComparator implements
+public class RoundsAllocatedAsc extends PlayerHistoryComparator implements
 		LegitimateClaimsCanon {
 
-	public F1b(Cluster c) {
+	public RoundsAllocatedAsc(Cluster c) {
 		super(c, new Comparator<PlayerHistory>() {
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return Double.compare(o1.getSatisfaction(),
-						o2.getSatisfaction());
+				return o1.getRoundsAllocated() - o2.getRoundsAllocated();
 			}
 		});
 	}
 
 	@Override
 	public Canon getCanon() {
-		return Canon.F1b;
+		return Canon.F1c;
 	}
+
 }
