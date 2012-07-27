@@ -19,14 +19,14 @@ end
 query lcCluster(Cluster c)
 	Cluster( this == c, allocationMethod in (
 		Allocation.LC_FIXED,
-		Allocation.LC_F1,
 		Allocation.LC_F1a,
+		Allocation.LC_F1b,
+		Allocation.LC_F1c,
 		Allocation.LC_F2,
 		Allocation.LC_F3,
 		Allocation.LC_F4,
 		Allocation.LC_F5,
 		Allocation.LC_F6,
-		Allocation.LC_F7,
 		Allocation.LC_SO ) )
 end
 

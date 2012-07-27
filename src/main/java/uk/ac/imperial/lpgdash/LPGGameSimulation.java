@@ -57,16 +57,16 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	public double alpha;
 	@Parameter(name = "beta")
 	public double beta;
-	@Parameter(name = "gamma")
-	public double gamma;
+	@Parameter(name = "gamma", optional = true)
+	public double gamma = 0.1;
 	@Parameter(name = "seed")
 	public int seed;
 
-	@Parameter(name = "soHack")
-	public int soHack;
+	@Parameter(name = "soHack", optional = true)
+	public boolean soHack = true;
 
-	@Parameter(name = "cheatOn")
-	public String cheatOn;
+	@Parameter(name = "cheatOn", optional = true)
+	public String cheatOn = "provision";
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -157,7 +157,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 						this.game);
 				lc.setStorage(storage);
 				lc.setGamma(gamma);
-				lc.enableHack = (soHack == 1);
+				lc.enableHack = soHack;
 				session.insert(lc);
 			}
 			clusters[i] = c;
