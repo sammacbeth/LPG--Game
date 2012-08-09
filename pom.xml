@@ -5,11 +5,11 @@
 	<groupId>uk.ac.imperial</groupId>
 	<artifactId>lpg-dash-game</artifactId>
 	<version>0.0.1</version>
-	<packaging>war</packaging>
+	<packaging>jar</packaging>
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<presage.version>0.3.3-SNAPSHOT</presage.version>
+		<presage.version>0.3.4-SNAPSHOT</presage.version>
 	</properties>
 
 	<dependencies>
@@ -26,13 +26,7 @@
 		<dependency>
 			<groupId>uk.ac.imperial.presage2</groupId>
 			<artifactId>presage2-sqldb</artifactId>
-			<version>${presage.version}</version>
-		</dependency>
-		<dependency>
-			<groupId>uk.ac.imperial.presage2</groupId>
-			<artifactId>presage2-webapp</artifactId>
-			<version>${presage.version}</version>
-			<type>war</type>
+			<version>0.3.3</version>
 		</dependency>
 		<dependency>
 			<groupId>uk.ac.imperial.presage2</groupId>
