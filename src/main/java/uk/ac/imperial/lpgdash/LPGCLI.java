@@ -1,5 +1,9 @@
 package uk.ac.imperial.lpgdash;
 
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -213,5 +217,172 @@ public class LPGCLI extends Presage2CLI {
 			}
 		}
 		stopDatabase();
+	}
+
+	@Command(name = "summarise", description = "Process raw simulation data to generate evaluation metrics.")
+	public void summarise(String[] args) {
+		logger.warn("This implementation assumes you are using postgresql >=9.1 with hstore, it will fail otherwise.");
+		// get database to trigger injector creation
+		getDatabase();
+		// pull JDBC connection from injector
+		Connection conn = injector.getInstance(Connection.class);
+
+		try {
+			logger.info("Creating tables and views. ");
+
+			logger.info("CREATE VIEW allocationRatios");
+			conn.createStatement()
+					.execute(
+							"CREATE OR REPLACE VIEW allocationRatios AS "
+									+ "SELECT t.\"simId\", "
+									+ "a.name, "
+									+ "t.\"time\", "
+									+ "t.state->'cluster' AS \"cluster\", "
+									+ "LEAST(CAST(t.state->'r' AS float) / CAST( t.state->'d' AS float) ,1) AS \"ratio\" "
+									+ "FROM agenttransient AS t "
+									+ "JOIN agents AS a ON a.\"simId\" = t.\"simId\" AND a.aid = t.aid "
+									+ "WHERE CAST(t.state->'d' AS float) > 0");
+
+			logger.info("CREATE TABLE simulationSummary");
+			conn.createStatement()
+					.execute(
+							"CREATE TABLE IF NOT EXISTS simulationsummary"
+									+ "(\"simId\" bigint NOT NULL REFERENCES simulations,"
+									+ "name varchar(255) NOT NULL,"
+									+ "cluster int NOT NULL,"
+									+ "\"ut. C\" float,"
+									+ "\"stddev ut. C\" float,"
+									+ "\"ut. NC\" float,"
+									+ "\"stddev ut. NC\" float,"
+									+ "\"total ut.\" float,"
+									+ "\"rem. C\" int," + "\"rem. NC\" int,"
+									+ "PRIMARY KEY (\"simId\", cluster))");
+
+			logger.info("CREATE VIEW aggregatedSimulations");
+			conn.createStatement().execute(
+					"CREATE OR REPLACE VIEW aggregatedSimulations AS "
+							+ "SELECT \"name\" AS strategy," + "cluster,"
+							+ "AVG(\"ut. C\") AS \"ut. C\","
+							+ "STDDEV(\"ut. C\") AS \"stddev ut. C\","
+							+ "AVG(\"ut. NC\") AS \"ut. NC\","
+							+ "STDDEV(\"ut. NC\") AS \"stddev ut. NC\","
+							+ "AVG(\"rem. C\") AS \"rem. C\","
+							+ "AVG(\"rem. NC\") AS \"rem. NC\","
+							+ "COUNT(\"simId\") AS repeats "
+							+ "FROM simulationsummary "
+							+ "GROUP BY \"name\", cluster");
+
+			logger.info("CREATE TABLE aggregatePlayerScore");
+			conn.createStatement()
+					.execute(
+							"CREATE TABLE IF NOT EXISTS aggregatePlayerScore ("
+									+ "\"simId\" bigint NOT NULL REFERENCES simulations,"
+									+ "player varchar(10) NOT NULL,"
+									+ "cluster int NOT NULL,"
+									+ "USum float NOT NULL,"
+									+ "PRIMARY KEY (\"simId\", player, cluster) )");
+			logger.info("Processing simulations...");
+
+			// prepare statements
+			PreparedStatement clusterStats = conn
+					.prepareStatement("SELECT cluster,"
+							+ "AVG(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),"
+							+ "STDDEV(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),"
+							+ "AVG(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),"
+							+ "STDDEV(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),"
+							+ "SUM(USum) " + "FROM aggregatePlayerScore "
+							+ "WHERE \"simId\" = ? " + "GROUP BY cluster");
+			PreparedStatement remaining = conn
+					.prepareStatement("SELECT COUNT(*) FROM agentTransient AS t JOIN agents AS a ON t.aid = a.aid AND t.\"simId\" = a.\"simId\" WHERE a.\"simId\" = ? AND a.\"name\" LIKE ? AND t.\"time\" = ?");
+			PreparedStatement insertSummary = conn
+					.prepareStatement("INSERT INTO simulationSummary VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+
+			// get subset to process
+			ResultSet unprocessed = conn
+					.createStatement()
+					.executeQuery(
+							"SELECT s.id, s.\"name\", \"finishTime\" "
+									+ "FROM simulations AS s "
+									+ "LEFT JOIN simulationsummary AS ss ON ss.\"simId\" = s.id "
+									+ "WHERE s.state LIKE 'COMPLETE' AND ss.\"simId\" IS NULL "
+									+ "ORDER BY s.id ASC");
+			while (unprocessed.next()) {
+				long id = unprocessed.getLong(1);
+				String name = unprocessed.getString(2);
+				int finishTime = unprocessed.getInt(3);
+				int cutoff = (int) (Math.floor(finishTime / 2)) - 1;
+
+				logger.info(id + ": " + name);
+
+				// START TRANSACTION
+				conn.setAutoCommit(false);
+
+				// generate player scores per cluster
+				// note: this should be a PreparedStatement but JDBC sucks and
+				// can't deal with ? as an operator
+				conn.createStatement()
+						.execute(
+								"INSERT INTO aggregatePlayerScore "
+										+ "SELECT a.\"simId\", "
+										+ "a.\"name\", "
+										+ "CAST(t.state->'cluster' AS int) AS cluster, "
+										+ "SUM(CAST(t.state->'U' AS float)) AS usum "
+										+ "FROM agents AS a "
+										+ "LEFT JOIN  agenttransient AS t "
+										+ "ON a.\"simId\" = t.\"simId\" AND a.aid = t.aid AND t.state ?& ARRAY['cluster','U'] "
+										+ "LEFT JOIN aggregatePlayerScore AS p ON a.\"simId\" = p.\"simId\" AND a.\"name\" LIKE p.player AND p.cluster = CAST(t.state->'cluster' AS int) "
+										+ "WHERE a.\"simId\" = "
+										+ id
+										+ " AND p.cluster IS NULL "
+										+ "GROUP BY a.\"simId\", a.aid, t.state->'cluster'");
+
+				clusterStats.setLong(1, id);
+				ResultSet clusters = clusterStats.executeQuery();
+				logger.debug("Cutoff: " + cutoff);
+				while (clusters.next()) {
+					int cluster = clusters.getInt(1);
+					logger.debug("Cluster " + cluster);
+
+					// calculate c and nc remaining
+					int crem = 0;
+					int ncrem = 0;
+
+					remaining.setLong(1, id);
+					remaining.setString(2, "c%");
+					remaining.setInt(3, cutoff);
+					ResultSet rs = remaining.executeQuery();
+					if (rs.next()) {
+						crem = rs.getInt(1);
+					}
+
+					remaining.setString(2, "nc%");
+					rs = remaining.executeQuery();
+					if (rs.next()) {
+						ncrem = rs.getInt(1);
+					}
+
+					// insert summary
+					insertSummary.setLong(1, id);
+					insertSummary.setString(2, name);
+					insertSummary.setInt(3, cluster);
+					insertSummary.setDouble(4, clusters.getDouble(2));
+					insertSummary.setDouble(5, clusters.getDouble(3));
+					insertSummary.setDouble(6, clusters.getDouble(4));
+					insertSummary.setDouble(7, clusters.getDouble(5));
+					insertSummary.setDouble(8, clusters.getDouble(6));
+					insertSummary.setInt(9, crem);
+					insertSummary.setInt(10, ncrem);
+					insertSummary.execute();
+
+				}
+
+				// COMMIT TRANSACTION
+				conn.commit();
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		} finally {
+			stopDatabase();
+		}
 	}
 }
