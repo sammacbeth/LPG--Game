@@ -17,6 +17,7 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 import org.apache.log4j.Logger;
 
+import uk.ac.imperial.lpgdash.db.Queries;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.presage2.core.cli.Presage2CLI;
 import uk.ac.imperial.presage2.core.db.persistent.PersistentSimulation;
@@ -231,81 +232,37 @@ public class LPGCLI extends Presage2CLI {
 			logger.info("Creating tables and views. ");
 
 			logger.info("CREATE VIEW allocationRatios");
-			conn.createStatement()
-					.execute(
-							"CREATE OR REPLACE VIEW allocationRatios AS "
-									+ "SELECT t.\"simId\", "
-									+ "a.name, "
-									+ "t.\"time\", "
-									+ "t.state->'cluster' AS \"cluster\", "
-									+ "LEAST(CAST(t.state->'r' AS float) / CAST( t.state->'d' AS float) ,1) AS \"ratio\" "
-									+ "FROM agenttransient AS t "
-									+ "JOIN agents AS a ON a.\"simId\" = t.\"simId\" AND a.aid = t.aid "
-									+ "WHERE CAST(t.state->'d' AS float) > 0");
+			conn.createStatement().execute(
+					Queries.getQuery("create_allocationratios"));
 
 			logger.info("CREATE TABLE simulationSummary");
-			conn.createStatement()
-					.execute(
-							"CREATE TABLE IF NOT EXISTS simulationsummary"
-									+ "(\"simId\" bigint NOT NULL REFERENCES simulations,"
-									+ "name varchar(255) NOT NULL,"
-									+ "cluster int NOT NULL,"
-									+ "\"ut. C\" float,"
-									+ "\"stddev ut. C\" float,"
-									+ "\"ut. NC\" float,"
-									+ "\"stddev ut. NC\" float,"
-									+ "\"total ut.\" float,"
-									+ "\"rem. C\" int," + "\"rem. NC\" int,"
-									+ "PRIMARY KEY (\"simId\", cluster))");
+			conn.createStatement().execute(
+					Queries.getQuery("create_simulationsummary"));
 
 			logger.info("CREATE VIEW aggregatedSimulations");
 			conn.createStatement().execute(
-					"CREATE OR REPLACE VIEW aggregatedSimulations AS "
-							+ "SELECT \"name\" AS strategy," + "cluster,"
-							+ "AVG(\"ut. C\") AS \"ut. C\","
-							+ "STDDEV(\"ut. C\") AS \"stddev ut. C\","
-							+ "AVG(\"ut. NC\") AS \"ut. NC\","
-							+ "STDDEV(\"ut. NC\") AS \"stddev ut. NC\","
-							+ "AVG(\"rem. C\") AS \"rem. C\","
-							+ "AVG(\"rem. NC\") AS \"rem. NC\","
-							+ "COUNT(\"simId\") AS repeats "
-							+ "FROM simulationsummary "
-							+ "GROUP BY \"name\", cluster");
+					Queries.getQuery("create_aggregatedsimulations"));
 
 			logger.info("CREATE TABLE aggregatePlayerScore");
-			conn.createStatement()
-					.execute(
-							"CREATE TABLE IF NOT EXISTS aggregatePlayerScore ("
-									+ "\"simId\" bigint NOT NULL REFERENCES simulations,"
-									+ "player varchar(10) NOT NULL,"
-									+ "cluster int NOT NULL,"
-									+ "USum float NOT NULL,"
-									+ "PRIMARY KEY (\"simId\", player, cluster) )");
+			conn.createStatement().execute(
+					Queries.getQuery("create_aggregateplayerscore"));
 			logger.info("Processing simulations...");
 
 			// prepare statements
-			PreparedStatement clusterStats = conn
-					.prepareStatement("SELECT cluster,"
-							+ "AVG(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),"
-							+ "STDDEV(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),"
-							+ "AVG(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),"
-							+ "STDDEV(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),"
-							+ "SUM(USum) " + "FROM aggregatePlayerScore "
-							+ "WHERE \"simId\" = ? " + "GROUP BY cluster");
-			PreparedStatement remaining = conn
-					.prepareStatement("SELECT COUNT(*) FROM agentTransient AS t JOIN agents AS a ON t.aid = a.aid AND t.\"simId\" = a.\"simId\" WHERE a.\"simId\" = ? AND a.\"name\" LIKE ? AND t.\"time\" = ?");
-			PreparedStatement insertSummary = conn
-					.prepareStatement("INSERT INTO simulationSummary VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+			PreparedStatement aggregatePlayerScore = conn
+					.prepareStatement(Queries
+							.getQuery("insert_aggregateplayerscore"));
+			PreparedStatement clusterStats = conn.prepareStatement(Queries
+					.getQuery("select_clusters"));
+			PreparedStatement remaining = conn.prepareStatement(Queries
+					.getQuery("select_agentsremaining"));
+			PreparedStatement insertSummary = conn.prepareStatement(Queries
+					.getQuery("insert_simulationsummary"));
 
 			// get subset to process
-			ResultSet unprocessed = conn
-					.createStatement()
-					.executeQuery(
-							"SELECT s.id, s.\"name\", \"finishTime\" "
-									+ "FROM simulations AS s "
-									+ "LEFT JOIN simulationsummary AS ss ON ss.\"simId\" = s.id "
-									+ "WHERE s.state LIKE 'COMPLETE' AND ss.\"simId\" IS NULL "
-									+ "ORDER BY s.id ASC");
+			ResultSet unprocessed = conn.createStatement().executeQuery(
+					Queries.getQuery("select_unprocessedsimulations"));
+
 			while (unprocessed.next()) {
 				long id = unprocessed.getLong(1);
 				String name = unprocessed.getString(2);
@@ -318,23 +275,9 @@ public class LPGCLI extends Presage2CLI {
 				conn.setAutoCommit(false);
 
 				// generate player scores per cluster
-				// note: this should be a PreparedStatement but JDBC sucks and
-				// can't deal with ? as an operator
-				conn.createStatement()
-						.execute(
-								"INSERT INTO aggregatePlayerScore "
-										+ "SELECT a.\"simId\", "
-										+ "a.\"name\", "
-										+ "CAST(t.state->'cluster' AS int) AS cluster, "
-										+ "SUM(CAST(t.state->'U' AS float)) AS usum "
-										+ "FROM agents AS a "
-										+ "LEFT JOIN  agenttransient AS t "
-										+ "ON a.\"simId\" = t.\"simId\" AND a.aid = t.aid AND t.state ?& ARRAY['cluster','U'] "
-										+ "LEFT JOIN aggregatePlayerScore AS p ON a.\"simId\" = p.\"simId\" AND a.\"name\" LIKE p.player AND p.cluster = CAST(t.state->'cluster' AS int) "
-										+ "WHERE a.\"simId\" = "
-										+ id
-										+ " AND p.cluster IS NULL "
-										+ "GROUP BY a.\"simId\", a.aid, t.state->'cluster'");
+				aggregatePlayerScore.setLong(1, id);
+				aggregatePlayerScore.setLong(2, id);
+				aggregatePlayerScore.execute();
 
 				clusterStats.setLong(1, id);
 				ResultSet clusters = clusterStats.executeQuery();

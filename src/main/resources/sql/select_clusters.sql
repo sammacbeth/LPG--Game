@@ -1,0 +1,9 @@
+SELECT cluster,
+AVG(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),
+STDDEV(CASE WHEN player LIKE 'c%' THEN USum ELSE NULL END),
+AVG(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),
+STDDEV(CASE WHEN player LIKE 'nc%' THEN USum ELSE NULL END),
+SUM(USum)
+FROM aggregatePlayerScore
+WHERE "simId" = ?
+GROUP BY cluster
