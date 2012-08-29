@@ -6,4 +6,4 @@ JOIN agents AS a
 WHERE a."simId" = ?
 	AND a."name" LIKE ?
 	AND t."time" = ?
-
+	AND CAST(t.state->'cluster' AS int) = ?

@@ -293,6 +293,7 @@ public class LPGCLI extends Presage2CLI {
 					remaining.setLong(1, id);
 					remaining.setString(2, "c%");
 					remaining.setInt(3, cutoff);
+					remaining.setInt(4, cluster);
 					ResultSet rs = remaining.executeQuery();
 					if (rs.next()) {
 						crem = rs.getInt(1);

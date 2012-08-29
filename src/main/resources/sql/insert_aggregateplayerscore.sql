@@ -9,5 +9,5 @@ INSERT INTO aggregatePlayerScore
 		AND a.aid = t.aid 
 		AND exist(t.state, 'cluster') 
 		AND exist(t.state, 'U') 
-	WHERE a."simId" = ? 
+	WHERE a."simId" = ? AND exist(t.state, 'cluster') AND defined(t.state, 'cluster')
 	GROUP BY a."simId", a.aid, t.state->'cluster';
