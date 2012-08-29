@@ -136,7 +136,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	}
 
 	protected Cluster[] initClusters() {
-		String[] clusterNames = StringUtils.split(this.clusters, '.');
+		String[] clusterNames = StringUtils.split(this.clusters, ',');
 		Cluster[] clusters = new Cluster[clusterNames.length];
 		int clusterCtr = 0;
 		for (int i = 0; i < clusterNames.length; i++) {
