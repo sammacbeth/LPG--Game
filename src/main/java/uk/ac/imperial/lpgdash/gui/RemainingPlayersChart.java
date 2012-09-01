@@ -67,6 +67,7 @@ class RemainingPlayersChart implements TimeSeriesChart {
 				TransientAgentState s = a.getState(t);
 				if (s != null
 						&& s.getProperty("U") != null
+						&& s.getProperty("cluster") != null
 						&& Integer.parseInt(s.getProperty("cluster")) == cluster) {
 					if (compliant)
 						c[0][i]++;

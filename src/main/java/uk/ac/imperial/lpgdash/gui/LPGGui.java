@@ -108,6 +108,10 @@ public class LPGGui {
 		charts.add(new RemainingPlayersChart(sim, windowSize, 0));
 		charts.add(new UtilityChart(sim, windowSize));
 		charts.add(new SatisfactionChart(sim, windowSize));
+		if (exportMode) {
+			charts.add(new GiniChart(sim, windowSize));
+			charts.add(new LorenzChart(sim, windowSize));
+		}
 
 		final Frame f = new Frame("LPGGAME");
 		final Panel p = new Panel(new GridLayout(2, 2));
