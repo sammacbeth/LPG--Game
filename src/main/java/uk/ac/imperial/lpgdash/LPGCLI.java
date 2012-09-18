@@ -24,7 +24,10 @@ import uk.ac.imperial.lpgdash.db.Queries;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.gui.LPGGui;
 import uk.ac.imperial.presage2.core.cli.Presage2CLI;
+import uk.ac.imperial.presage2.core.db.StorageService;
+import uk.ac.imperial.presage2.core.db.persistent.PersistentAgent;
 import uk.ac.imperial.presage2.core.db.persistent.PersistentSimulation;
+import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 
 public class LPGCLI extends Presage2CLI {
 
@@ -334,6 +337,48 @@ public class LPGCLI extends Presage2CLI {
 		}
 	}
 
+	@Command(name = "verify", description = "Check a result set for errors.")
+	public void verify(String[] args) {
+		long simulationID = 0;
+		try {
+			simulationID = Long.parseLong(args[1]);
+		} catch (NumberFormatException e) {
+			System.err.println("Simulation ID should be an integer.");
+			return;
+		} catch (ArrayIndexOutOfBoundsException e) {
+			System.err.println("Please specify a simulation ID.");
+		}
+
+		StorageService storage = getDatabase();
+		PersistentSimulation sim = storage.getSimulationById(simulationID);
+
+		logger.info("Check for missing round data");
+		for (PersistentAgent a : sim.getAgents()) {
+			logger.info("Agent " + a.getName() + "...");
+			boolean current;
+			boolean next = hasMissingData(a.getState(1));
+			for (int t = 2; t < (sim.getFinishTime() / 2); t++) {
+				current = next;
+				next = hasMissingData(a.getState(t));
+				if (current && !next) {
+					logger.warn("Missing round for agent " + a.getName()
+							+ " timestep " + (t - 1));
+				} else if (!current && next) {
+					logger.info(a.getName() + " didn't play at round " + t);
+				}
+			}
+		}
+		stopDatabase();
+	}
+
+	private static boolean hasMissingData(TransientAgentState s) {
+		Map<String, String> p = s.getProperties();
+		return !p.containsKey("g") || !p.containsKey("d")
+				|| !p.containsKey("p") || !p.containsKey("q")
+				|| !p.containsKey("r") || !p.containsKey("r'")
+				|| !p.containsKey("RTotal") || !p.containsKey("U");
+	}
+
 	@Command(name = "gini", description = "Calculate gini coefficient for simulations.")
 	public void calculate_gini(String[] args) {
 		// get database to trigger injector creation
@@ -446,11 +491,11 @@ public class LPGCLI extends Presage2CLI {
 		b = b / (n * sum);
 		return 1 + (1. / n) - 2 * b;
 	}
-	
+
 	@Command(name = "graph", description = "Export graphs for simulation.")
 	public void export_graphs(String[] args) throws Exception {
-		if(args.length > 1) {
-			args = new String[] {args[1], Boolean.toString(true)};
+		if (args.length > 1) {
+			args = new String[] { args[1], Boolean.toString(true) };
 			LPGGui.main(args);
 		}
 	}

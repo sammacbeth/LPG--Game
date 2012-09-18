@@ -2,7 +2,7 @@ package uk.ac.imperial.lpgdash.actions;
 
 import uk.ac.imperial.presage2.core.Action;
 
-abstract class TimestampedAction implements Action {
+public abstract class TimestampedAction implements Action {
 
 	int t;
 

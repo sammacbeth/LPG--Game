@@ -22,27 +22,22 @@ declare Round
 end
 
 declare Provision
-	@expires( 10s )
 	@role( event )
 end
 
 declare Demand
-	@expires( 10s )
 	@role( event )
 end
 
 declare Generate
-	@expires( 10s )
 	@role( event )
 end
 
 declare Allocate
-	@expires( 10s )
 	@role( event )
 end
 
 declare Appropriate
-	@expires( 10s )
 	@role( event )
 end
 
@@ -78,6 +73,14 @@ end
 
 query getMemberOf(Player p)
 	m : MemberOf( player == p )
+end
+
+rule "Prune actons"
+	when
+		Round( $n : number )
+		$a : TimestampedAction( t < $n - 5)
+	then
+		retract( $a )
 end
 
 rule "Discard Rounds"
@@ -308,4 +311,12 @@ rule "Calculate round fairness"
 					$r.getNumber(),
 					Double.toString($fairness.getStandardDeviation()));
 		}
+end
+
+rule "Prune processed"
+	when
+		$p : Processed( $o : act )
+		not Object( this == $o )
+	then
+		retract( $p );
 end

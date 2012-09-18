@@ -26,7 +26,7 @@
 		<dependency>
 			<groupId>uk.ac.imperial.presage2</groupId>
 			<artifactId>presage2-sqldb</artifactId>
-			<version>0.3.3</version>
+			<version>${presage.version}</version>
 		</dependency>
 		<dependency>
 			<groupId>uk.ac.imperial.presage2</groupId>

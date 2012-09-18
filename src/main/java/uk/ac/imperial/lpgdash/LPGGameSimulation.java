@@ -1,6 +1,8 @@
 package uk.ac.imperial.lpgdash;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -181,6 +183,24 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 			for (Player p : players) {
 				session.insert(new Generate(p, game.getRoundNumber() + 1));
 			}
+		}
+		// analyse objects in working memory.
+		// analyseDroolsUsage();
+	}
+
+	@SuppressWarnings("unused")
+	private void analyseDroolsUsage() {
+		Map<Class<?>, Integer> typeCards = new HashMap<Class<?>, Integer>();
+		for (Object o : session.getObjects()) {
+			if (!typeCards.containsKey(o.getClass())) {
+				typeCards.put(o.getClass(), 0);
+			}
+			typeCards.put(o.getClass(), typeCards.get(o.getClass()) + 1);
+		}
+		logger.info("Drools memory:");
+		for (Map.Entry<Class<?>, Integer> entry : typeCards.entrySet()) {
+			logger.info(entry.getKey().getSimpleName() + " - "
+					+ entry.getValue());
 		}
 	}
 
