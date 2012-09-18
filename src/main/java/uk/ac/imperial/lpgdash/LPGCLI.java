@@ -4,7 +4,10 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.apache.commons.cli.CommandLine;
@@ -19,6 +22,7 @@ import org.apache.log4j.Logger;
 
 import uk.ac.imperial.lpgdash.db.Queries;
 import uk.ac.imperial.lpgdash.facts.Allocation;
+import uk.ac.imperial.lpgdash.gui.LPGGui;
 import uk.ac.imperial.presage2.core.cli.Presage2CLI;
 import uk.ac.imperial.presage2.core.db.persistent.PersistentSimulation;
 
@@ -193,7 +197,7 @@ public class LPGCLI extends Presage2CLI {
 	}
 
 	void multi_cluster(int repeats, int seed) {
-		int rounds = 3000;
+		int rounds = 1000;
 		double[] betas = { 0.1, 0.4 };
 		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM;
 		for (int i = 0; i < repeats; i++) {
@@ -327,6 +331,127 @@ public class LPGCLI extends Presage2CLI {
 			throw new RuntimeException(e);
 		} finally {
 			stopDatabase();
+		}
+	}
+
+	@Command(name = "gini", description = "Calculate gini coefficient for simulations.")
+	public void calculate_gini(String[] args) {
+		// get database to trigger injector creation
+		getDatabase();
+		// pull JDBC connection from injector
+		Connection conn = injector.getInstance(Connection.class);
+
+		try {
+			PreparedStatement clusterStats = conn.prepareStatement(Queries
+					.getQuery("select_clusters"));
+			PreparedStatement allocationRatios = conn.prepareStatement(Queries
+					.getQuery("select_allocationratios"));
+			// copied from PostgreSQLStorage
+			PreparedStatement insertEnvironment = conn
+					.prepareStatement("INSERT INTO environmentTransient (\"simId\", \"time\")"
+							+ "	SELECT ?, ?"
+							+ "	WHERE NOT EXISTS (SELECT 1 FROM environmentTransient WHERE \"simId\"=? AND \"time\" = ?);");
+			PreparedStatement updateEnvironment = conn
+					.prepareStatement("UPDATE environmentTransient SET state = state || hstore(?, ?) "
+							+ "WHERE \"simId\" = ? AND \"time\" = ?");
+
+			long simId = 70;
+
+			PersistentSimulation sim = storage.getSimulationById(simId);
+			int finishTime = sim.getFinishTime();
+			clusterStats.setLong(1, simId);
+			ResultSet clusters = clusterStats.executeQuery();
+			while (clusters.next()) {
+				int cluster = clusters.getInt(1);
+				int t = 1;
+				while (t <= finishTime / 2) {
+
+					List<Double> cRatios = new ArrayList<Double>();
+					List<Double> ncRatios = new ArrayList<Double>();
+					List<Double> allRatios = new ArrayList<Double>();
+
+					allocationRatios.setLong(1, simId);
+					allocationRatios.setInt(2, cluster);
+					allocationRatios.setInt(3, t);
+					ResultSet ratios = allocationRatios.executeQuery();
+					while (ratios.next()) {
+						double r = ratios.getDouble(2);
+						if (ratios.getString(1).startsWith("c"))
+							cRatios.add(r);
+						else
+							ncRatios.add(r);
+					}
+					allRatios.addAll(cRatios);
+					allRatios.addAll(ncRatios);
+
+					double gini_all = calc_gini(allRatios);
+					double gini_c = calc_gini(cRatios);
+					double gini_nc = calc_gini(ncRatios);
+
+					// ensure environment row is inserted
+					insertEnvironment.setLong(1, simId);
+					insertEnvironment.setLong(3, simId);
+					insertEnvironment.setInt(2, t);
+					insertEnvironment.setInt(4, t);
+					insertEnvironment.addBatch();
+
+					// insert gini values
+					updateEnvironment.setString(1, "c" + cluster + "_gini_all");
+					updateEnvironment.setString(2, Double.toString(gini_all));
+					updateEnvironment.setLong(3, simId);
+					updateEnvironment.setInt(4, t);
+					updateEnvironment.addBatch();
+					updateEnvironment.setString(1, "c" + cluster + "_gini_c");
+					updateEnvironment.setString(2, Double.toString(gini_c));
+					updateEnvironment.setLong(3, simId);
+					updateEnvironment.setInt(4, t);
+					updateEnvironment.addBatch();
+					updateEnvironment.setString(1, "c" + cluster + "_gini_nc");
+					updateEnvironment.setString(2, Double.toString(gini_nc));
+					updateEnvironment.setLong(3, simId);
+					updateEnvironment.setInt(4, t);
+					updateEnvironment.addBatch();
+
+					logger.info("c:" + cluster + ", t:" + t + " - g_c = "
+							+ gini_c + ", g_nc = " + gini_nc + ", g_all = "
+							+ gini_all);
+
+					t++;
+				}
+				insertEnvironment.executeBatch();
+				updateEnvironment.executeBatch();
+			}
+		} catch (SQLException e) {
+			throw new RuntimeException(e);
+		} finally {
+			stopDatabase();
+		}
+
+	}
+
+	private static double calc_gini(List<Double> x) {
+		Collections.sort(x);
+		int n = x.size();
+		double b = 0;
+		double sum = 0;
+		for (int i = 0; i < n; i++) {
+			double xi = x.get(i);
+			sum += xi;
+			b += (xi * (n - i));
+		}
+
+		if (sum == 0)
+			return 1;
+
+		b = b / (n * sum);
+		return 1 + (1. / n) - 2 * b;
+	}
+	
+	@Command(name = "graph", description = "Export graphs for simulation.")
+	public void export_graphs(String[] args) throws Exception {
+		if(args.length > 1) {
+			args = new String[] {args[1], Boolean.toString(true)};
+			LPGGui.main(args);
 		}
 	}
 }

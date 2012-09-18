@@ -54,30 +54,46 @@ class RemainingPlayersChart implements TimeSeriesChart {
 		finish = Math.min(finish, sim.getFinishTime() / 2);
 		int start = Math.max(finish - windowSize, 0);
 		int length = Math.min(windowSize, finish - start);
-		double[][] c = new double[2][length];
-		double[][] nc = new double[2][length];
-		Arrays.fill(c[0], 0);
-		Arrays.fill(nc[0], 0);
+		double[][][] c = new double[2][2][length];
+		double[][][] nc = new double[2][2][length];
+		Arrays.fill(c[0][0], 0);
+		Arrays.fill(nc[0][0], 0);
+		Arrays.fill(c[1][0], 0);
+		Arrays.fill(nc[1][0], 0);
 		for (int i = 0; i < length; i++) {
 			int t = start + i + 1;
-			c[1][i] = t;
-			nc[1][i] = t;
+			c[0][1][i] = t;
+			nc[0][1][i] = t;
+			c[1][1][i] = t;
+			nc[1][1][i] = t;
 			for (PersistentAgent a : sim.getAgents()) {
 				boolean compliant = a.getName().startsWith("c");
 				TransientAgentState s = a.getState(t);
 				if (s != null
 						&& s.getProperty("U") != null
-						&& s.getProperty("cluster") != null
-						&& Integer.parseInt(s.getProperty("cluster")) == cluster) {
+						&& s.getProperty("cluster") != null) {
+					int cluster = Integer.parseInt(s.getProperty("cluster"));
 					if (compliant)
-						c[0][i]++;
+						c[cluster][0][i]++;
 					else
-						nc[0][i]++;
+						nc[cluster][0][i]++;
+				}
+			}
+			if (i > 0) {
+				for(int cl : new int[]{0, 1}) {
+					if (c[cl][0][i] > c[cl][0][i - 1]) {
+						c[cl][0][i - 1]++;
+					}
+					if (nc[cl][0][i] > nc[cl][0][i - 1]) {
+						nc[cl][0][i - 1]++;
+					}
 				}
 			}
 		}
-		data.addSeries("Compliant", c);
-		data.addSeries("Non compliant", nc);
+		data.addSeries("Compliant", c[0]);
+		data.addSeries("Non compliant", nc[0]);
+		//data.addSeries("Random, Compliant", c[1]);
+		//data.addSeries("Random, Non compliant", nc[1]);
 		chart.getXYPlot().getRangeAxis()
 				.setRange(Math.max(1.0, finish - windowSize + 1), finish);
 	}

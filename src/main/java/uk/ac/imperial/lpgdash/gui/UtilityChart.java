@@ -36,7 +36,7 @@ public class UtilityChart implements TimeSeriesChart {
 
 		data = new DefaultCategoryDataset();
 		chart = ChartFactory.createBarChart(
-				"Average Provision over last 50 rounds", "", "", data,
+				"Average Allocation over last 50 rounds", "", "", data,
 				PlotOrientation.VERTICAL, false, false, false);
 		panel = new ChartPanel(chart);
 

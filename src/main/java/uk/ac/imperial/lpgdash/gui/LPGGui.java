@@ -1,6 +1,5 @@
 package uk.ac.imperial.lpgdash.gui;
 
-import java.awt.Color;
 import java.awt.Frame;
 import java.awt.GridLayout;
 import java.awt.Panel;
@@ -11,10 +10,8 @@ import java.util.List;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math.stat.descriptive.SummaryStatistics;
-import org.jfree.chart.ChartFactory;
 import org.jfree.chart.ChartUtilities;
 import org.jfree.chart.JFreeChart;
-import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.general.DefaultPieDataset;
 import org.jfree.data.xy.DefaultXYDataset;
 
@@ -93,7 +90,7 @@ public class LPGGui {
 				System.exit(60);
 		}
 
-		final DefaultXYDataset utDist = new DefaultXYDataset();
+		/*final DefaultXYDataset utDist = new DefaultXYDataset();
 		addUtilityDistributionData(utDist, t);
 		final JFreeChart distributionChart = ChartFactory.createScatterPlot(
 				"Utility Distribution", "Ut.", "Compliant rounds", utDist,
@@ -101,7 +98,7 @@ public class LPGGui {
 		distributionChart.getXYPlot().setBackgroundPaint(Color.WHITE);
 		distributionChart.getXYPlot().getDomainAxis().setRange(-0.5, 1.0);
 		distributionChart.getXYPlot().getRangeAxis()
-				.setRange(0, windowSize + 1);
+				.setRange(0, windowSize + 1);*/
 
 		List<TimeSeriesChart> charts = new ArrayList<TimeSeriesChart>();
 		charts.add(new FunctionWeightsChart(sim, windowSize));
@@ -109,8 +106,8 @@ public class LPGGui {
 		charts.add(new UtilityChart(sim, windowSize));
 		charts.add(new SatisfactionChart(sim, windowSize));
 		if (exportMode) {
-			charts.add(new GiniChart(sim, windowSize));
-			charts.add(new LorenzChart(sim, windowSize));
+			//charts.add(new GiniChart(sim, windowSize));
+			//charts.add(new LorenzChart(sim, windowSize));
 		}
 
 		final Frame f = new Frame("LPGGAME");
