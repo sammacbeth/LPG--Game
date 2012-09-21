@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 import org.drools.runtime.rule.QueryResults;
@@ -15,16 +16,16 @@ import org.drools.runtime.rule.Variable;
 
 import uk.ac.imperial.lpgdash.LPGService;
 import uk.ac.imperial.lpgdash.actions.Allocate;
-import uk.ac.imperial.lpgdash.allocators.canons.Canon;
 import uk.ac.imperial.lpgdash.allocators.canons.AverageAllocatedAsc;
-import uk.ac.imperial.lpgdash.allocators.canons.RoundsAllocatedAsc;
 import uk.ac.imperial.lpgdash.allocators.canons.AverageDemandedAsc;
 import uk.ac.imperial.lpgdash.allocators.canons.AverageProvidedDesc;
-import uk.ac.imperial.lpgdash.allocators.canons.RoundsParticipantedDesc;
-import uk.ac.imperial.lpgdash.allocators.canons.RoundsAsHeadDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.Canon;
 import uk.ac.imperial.lpgdash.allocators.canons.CompliantRoundsDesc;
-import uk.ac.imperial.lpgdash.allocators.canons.SatisfactionAsc;
 import uk.ac.imperial.lpgdash.allocators.canons.LegitimateClaimsCanon;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsAllocatedAsc;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsAsHeadDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.RoundsParticipantedDesc;
+import uk.ac.imperial.lpgdash.allocators.canons.SatisfactionAsc;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.BordaRank;
 import uk.ac.imperial.lpgdash.facts.Cluster;
@@ -40,6 +41,7 @@ public class LegitimateClaims {
 
 	private final Cluster c;
 	private double gamma = 0.1;
+	public int rankMemory = 1;
 
 	public boolean ratelimit = false;
 	public boolean enableHack = true;
@@ -256,6 +258,8 @@ public class LegitimateClaims {
 		storeWeights();
 	}
 
+	Map<UUID, List<FunctionRank>> playerRankMemory = new HashMap<UUID, List<FunctionRank>>();
+
 	private void normaliseWeights() {
 		double weightsSum = 0.0;
 		for (Double w : weight.values()) {
@@ -275,10 +279,22 @@ public class LegitimateClaims {
 
 		// calculate Borda(f, C)
 		for (BordaRank p : bordaPtq) {
-			List<FunctionRank> playerRanks = new ArrayList<LegitimateClaims.FunctionRank>();
-			for (Canon f : weight.keySet()) {
-				playerRanks.add(new FunctionRank(f, p.get(f)));
+			// get player's rank history
+			final UUID pID = p.getPlayer().getId();
+			if (!playerRankMemory.containsKey(pID)) {
+				List<FunctionRank> emptyRanks = new ArrayList<LegitimateClaims.FunctionRank>();
+				for (Canon f : weight.keySet()) {
+					emptyRanks.add(new MemoryFunctionRank(f, rankMemory));
+				}
+				playerRankMemory.put(pID, emptyRanks);
 			}
+			List<FunctionRank> playerRanks = new ArrayList<LegitimateClaims.FunctionRank>(
+					playerRankMemory.get(pID));
+			for (FunctionRank r : playerRanks) {
+				r.addRank(p.get(r.getFunction()));
+			}
+			// logger.info(p.getPlayer().getName() + " Rank memory: "
+			// + playerRanks.toString());
 
 			Collections.sort(playerRanks);
 
@@ -290,22 +306,23 @@ public class LegitimateClaims {
 				FunctionRank f;
 				if (i == playerRanks.size())
 					// stub functionrank for last iteration
-					f = new FunctionRank(null, -1);
+					f = new MemoryLessFunctionRank(null);
 				else
 					f = playerRanks.get(i);
 
-				if (f.rank != lastRank) {
+				if (f.getRank() != lastRank) {
 					// shared score between fns
 					int fnCount = i - lastIndex;
 					double bordaPerFn = ((double) bordaAvailable) / fnCount;
 					for (int j = lastIndex; j < i; j++) {
 						FunctionRank fAdd = playerRanks.get(j);
-						fBorda.put(fAdd.f, fBorda.get(fAdd.f) + bordaPerFn);
+						fBorda.put(fAdd.getFunction(),
+								fBorda.get(fAdd.getFunction()) + bordaPerFn);
 					}
 
 					bordaAvailable = score;
 					lastIndex = i;
-					lastRank = f.rank;
+					lastRank = f.getRank();
 				} else {
 					bordaAvailable += score;
 				}
@@ -371,24 +388,80 @@ public class LegitimateClaims {
 		}
 	}
 
-	private static class FunctionRank implements Comparable<FunctionRank> {
-		Canon f;
-		int rank;
+	private static interface FunctionRank extends Comparable<FunctionRank> {
+		public Canon getFunction();
 
-		FunctionRank(Canon f, int rank) {
+		public void addRank(int rank);
+
+		public int getRank();
+	}
+
+	private static class MemoryLessFunctionRank implements FunctionRank {
+		Canon f;
+		int rank = -1;
+
+		MemoryLessFunctionRank(Canon f) {
 			super();
 			this.f = f;
+		}
+
+		public void addRank(int rank) {
 			this.rank = rank;
+		}
+
+		public int getRank() {
+			return this.rank;
 		}
 
 		@Override
 		public int compareTo(FunctionRank o) {
-			return rank - o.rank;
+			return rank - o.getRank();
 		}
 
 		@Override
 		public String toString() {
 			return "FunctionRank [f=" + f + ", rank=" + rank + "]";
+		}
+
+		@Override
+		public Canon getFunction() {
+			return f;
+		}
+
+	}
+
+	private static class MemoryFunctionRank implements FunctionRank {
+		Canon f;
+		final DescriptiveStatistics rankMemory;
+
+		MemoryFunctionRank(Canon f, int memory) {
+			super();
+			this.f = f;
+			this.rankMemory = new DescriptiveStatistics(memory);
+		}
+
+		public void addRank(int rank) {
+			rankMemory.addValue(rank);
+		}
+
+		public int getRank() {
+			return (int) rankMemory.getMean();
+		}
+
+		@Override
+		public int compareTo(FunctionRank o) {
+			return getRank() - o.getRank();
+		}
+
+		@Override
+		public String toString() {
+			return "FunctionRank [f=" + f + ", avgrank=" + rankMemory.getMean()
+					+ "]";
+		}
+
+		@Override
+		public Canon getFunction() {
+			return f;
 		}
 
 	}

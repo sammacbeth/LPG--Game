@@ -57,6 +57,7 @@ public class LPGCLI extends Presage2CLI {
 		experiments
 				.put("multi_cluster",
 						"Multi-cluster scenario with lc_so and random allocations over beta {0.1,0.4}");
+		experiments.put("memory", "Increasing agent memory sizes");
 
 		OptionGroup exprOptions = new OptionGroup();
 		for (String key : experiments.keySet()) {
@@ -116,6 +117,8 @@ public class LPGCLI extends Presage2CLI {
 			het_hom(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("multi_cluster")) {
 			multi_cluster(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("memory")) {
+			memory(repeats, seed);
 		}
 
 	}
@@ -227,6 +230,35 @@ public class LPGCLI extends Presage2CLI {
 		stopDatabase();
 	}
 
+	void memory(int repeats, int seed) {
+		int rounds = 1002;
+		for (int i = 0; i < repeats; i++) {
+			for (int memory : new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20 }) {
+				PersistentSimulation sim = getDatabase().createSimulation(
+						"memory_" + memory,
+						"uk.ac.imperial.lpgdash.LPGGameSimulation",
+						"AUTO START", rounds);
+				sim.addParameter("finishTime", Integer.toString(rounds));
+				sim.addParameter("alpha", Double.toString(0.1));
+				sim.addParameter("beta", Double.toString(0.1));
+				sim.addParameter("gamma", Double.toString(0.1));
+				sim.addParameter("cCount", Integer.toString(20));
+				sim.addParameter("cPCheat", Double.toString(0.02));
+				sim.addParameter("ncCount", Integer.toString(10));
+				sim.addParameter("ncPCheat", Double.toString(0.25));
+				sim.addParameter("seed", Integer.toString(seed + i));
+				sim.addParameter("soHack", Boolean.toString(true));
+				sim.addParameter("clusters", Allocation.LC_SO.name());
+				sim.addParameter("cheatOn", Cheat.PROVISION.name());
+				sim.addParameter("rankMemory", Integer.toString(memory));
+
+				logger.info("Created sim: " + sim.getID() + " - "
+						+ sim.getName());
+			}
+		}
+		stopDatabase();
+	}
+
 	@Command(name = "summarise", description = "Process raw simulation data to generate evaluation metrics.")
 	public void summarise(String[] args) {
 		logger.warn("This implementation assumes you are using postgresql >=9.1 with hstore, it will fail otherwise.");
@@ -253,6 +285,10 @@ public class LPGCLI extends Presage2CLI {
 			logger.info("CREATE TABLE aggregatePlayerScore");
 			conn.createStatement().execute(
 					Queries.getQuery("create_aggregateplayerscore"));
+
+			logger.info("Vacuuming database...");
+			conn.createStatement().execute("VACUUM FULL");
+
 			logger.info("Processing simulations...");
 
 			// prepare statements

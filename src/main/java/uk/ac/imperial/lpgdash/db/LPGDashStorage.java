@@ -12,6 +12,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import uk.ac.imperial.lpgdash.LPGService;
+import uk.ac.imperial.lpgdash.allocators.canons.Canon;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.db.sql.Agent;
@@ -179,8 +180,8 @@ public class LPGDashStorage extends SqlStorage {
 					insertRound.setDouble(3,
 							getProperty(props, "c0-fairness", 0));
 
-					String[] canons = { "w_F1a", "w_F1b", "w_F2", "w_F3",
-							"w_F4", "w_F5", "w_F6", "w_F7" };
+					String[] canons = { "w_F1a", "w_F1b", "w_F1c", "w_F2",
+							"w_F3", "w_F4", "w_F5", "w_F6" };
 					for (int i = 0; i < canons.length; i++) {
 						if (props.containsKey(canons[i]))
 							insertRound.setDouble(4 + i,

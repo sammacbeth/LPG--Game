@@ -70,6 +70,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "cheatOn", optional = true)
 	public String cheatOn = "provision";
 
+	@Parameter(name = "rankMemory", optional = true)
+	public int rankMemory = 1;
+
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
 	}
@@ -160,6 +163,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				lc.setStorage(storage);
 				lc.setGamma(gamma);
 				lc.enableHack = soHack;
+				lc.rankMemory = rankMemory;
 				session.insert(lc);
 			}
 			clusters[i] = c;
