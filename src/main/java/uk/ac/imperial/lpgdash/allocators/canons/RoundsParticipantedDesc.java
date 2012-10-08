@@ -12,7 +12,8 @@ public class RoundsParticipantedDesc extends PlayerHistoryComparator implements
 		super(c, new Comparator<PlayerHistory>() {
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return o2.getRoundsParticipated() - o1.getRoundsParticipated();
+				return Double.compare(o2.getRoundsParticipated(),
+						o1.getRoundsParticipated());
 			}
 		});
 	}

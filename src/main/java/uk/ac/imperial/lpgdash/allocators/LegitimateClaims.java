@@ -40,12 +40,12 @@ public class LegitimateClaims {
 	private final Logger logger = Logger.getLogger(LegitimateClaims.class);
 
 	private final Cluster c;
-	private double gamma = 0.1;
+	private double gamma = 0.01;
 	public int rankMemory = 1;
 
 	public boolean ratelimit = false;
 	public boolean enableHack = true;
-	private boolean soHd = true;
+	public boolean soHd = true;
 
 	private final StatefulKnowledgeSession session;
 	private final LPGService game;
@@ -190,6 +190,7 @@ public class LegitimateClaims {
 	private void updateWeights(List<BordaRank> bordaPtq,
 			Map<Canon, List<Player>> canonRankings) {
 		Map<Canon, Double> fBorda = fBorda(bordaPtq);
+		final double equalWeight = 1 / (double) weight.size();
 
 		logger.info("Borda(f, C) = " + fBorda.toString());
 
@@ -210,38 +211,37 @@ public class LegitimateClaims {
 		normaliseWeights();
 		logger.info("w*(t) = " + weight.toString());
 
-		if (enableHack) {
-			if (soHd) {
-				Map<Canon, Integer> fHd = new HashMap<Canon, Integer>();
-				for (Canon f : weight.keySet()) {
-					fHd.put(f, hdFBorda(canonRankings.get(f), bordaPtq));
-				}
-				double averageHd = 0;
-				int totalHd = 0;
-				for (int v : fHd.values()) {
-					totalHd += v;
-				}
-				averageHd = totalHd / (double) fHd.size();
-				for (Map.Entry<Canon, Integer> f : fHd.entrySet()) {
-					Canon c = f.getKey();
-					double delta = 0;
-					if (totalHd > 0)
-						delta = weight.get(c) * (fHd.get(c) - averageHd)
-								/ totalHd;
-					if (ratelimit) {
-						if (delta > 0.0007)
-							delta = 0.0007;
-						else if (delta < -0.0007)
-							delta = -0.0007;
-					}
-					weight.put(c, weight.get(c) + delta);
-				}
-				normaliseWeights();
-				logger.info("w*(t) = " + weight.toString());
+		if (soHd) {
+			Map<Canon, Integer> fHd = new HashMap<Canon, Integer>();
+			for (Canon f : weight.keySet()) {
+				fHd.put(f, hdFBorda(canonRankings.get(f), bordaPtq));
 			}
+			double averageHd = 0;
+			int totalHd = 0;
+			for (int v : fHd.values()) {
+				totalHd += v;
+			}
+			averageHd = totalHd / (double) fHd.size();
+			for (Map.Entry<Canon, Integer> f : fHd.entrySet()) {
+				Canon c = f.getKey();
+				double delta = 0;
+				if (totalHd > 0)
+					delta = weight.get(c) * (fHd.get(c) - averageHd) / totalHd;
+				if (ratelimit) {
+					if (delta > 0.0007)
+						delta = 0.0007;
+					else if (delta < -0.0007)
+						delta = -0.0007;
+				}
+				weight.put(c, weight.get(c) + delta);
+			}
+			normaliseWeights();
+			logger.info("w*(t) = " + weight.toString());
+		}
 
+		if (enableHack) {
 			if (bordaPtq.size() == getCompliantCount()) {
-				final double equalWeight = 1 / (double) weight.size();
+
 				for (Canon c : weight.keySet()) {
 					Double w = weight.get(c);
 					if (w > equalWeight) {

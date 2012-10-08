@@ -12,7 +12,8 @@ public class RoundsAsHeadDesc extends PlayerHistoryComparator implements
 		super(c, new Comparator<PlayerHistory>() {
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return o2.getRoundsAsHead() - o1.getRoundsAsHead();
+				return Double.compare(o2.getRoundsAsHead(),
+						o1.getRoundsAsHead());
 			}
 		});
 	}

@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -190,6 +191,7 @@ public class LPGCLI extends Presage2CLI {
 					sim.addParameter("ncCount", Integer.toString(30 - c));
 					sim.addParameter("ncPCheat", Double.toString(0.25));
 					sim.addParameter("seed", Integer.toString(seed + i));
+					sim.addParameter("soHd", Boolean.toString(true));
 					sim.addParameter("soHack", Boolean.toString(true));
 					sim.addParameter("clusters", cluster.name());
 					sim.addParameter("cheatOn", Cheat.PROVISION.name());
@@ -235,7 +237,7 @@ public class LPGCLI extends Presage2CLI {
 		for (int i = 0; i < repeats; i++) {
 			for (int memory : new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20 }) {
 				PersistentSimulation sim = getDatabase().createSimulation(
-						"memory_" + memory,
+						"memory_" + String.format("%2d", memory),
 						"uk.ac.imperial.lpgdash.LPGGameSimulation",
 						"AUTO START", rounds);
 				sim.addParameter("finishTime", Integer.toString(rounds));

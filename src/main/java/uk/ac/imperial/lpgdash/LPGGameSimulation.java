@@ -64,6 +64,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "seed")
 	public int seed;
 
+	@Parameter(name = "soHd", optional = true)
+	public boolean soHd = true;
 	@Parameter(name = "soHack", optional = true)
 	public boolean soHack = true;
 
@@ -163,6 +165,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				lc.setStorage(storage);
 				lc.setGamma(gamma);
 				lc.enableHack = soHack;
+				lc.soHd = soHd;
 				lc.rankMemory = rankMemory;
 				session.insert(lc);
 			}

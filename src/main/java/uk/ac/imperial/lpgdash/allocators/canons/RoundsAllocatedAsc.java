@@ -12,7 +12,8 @@ public class RoundsAllocatedAsc extends PlayerHistoryComparator implements
 		super(c, new Comparator<PlayerHistory>() {
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return o1.getRoundsAllocated() - o2.getRoundsAllocated();
+				return Double.compare(o1.getRoundsAllocated(),
+						o2.getRoundsAllocated());
 			}
 		});
 	}

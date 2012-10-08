@@ -12,7 +12,8 @@ public class CompliantRoundsDesc extends PlayerHistoryComparator implements
 		super(c, new Comparator<PlayerHistory>() {
 			@Override
 			public int compare(PlayerHistory o1, PlayerHistory o2) {
-				return o2.getCompliantRounds() - o1.getCompliantRounds();
+				return Double.compare(o2.getCompliantRounds(),
+						o1.getCompliantRounds());
 			}
 		});
 	}
