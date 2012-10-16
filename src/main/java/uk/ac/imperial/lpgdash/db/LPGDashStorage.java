@@ -12,7 +12,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import uk.ac.imperial.lpgdash.LPGService;
-import uk.ac.imperial.lpgdash.allocators.canons.Canon;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.db.sql.Agent;
@@ -28,7 +27,7 @@ public class LPGDashStorage extends SqlStorage {
 
 	boolean shutdown = false;
 
-	private LPGService game = null;
+	protected LPGService game = null;
 
 	@Inject
 	public LPGDashStorage(@Named(value = "sql.info") Properties jdbcInfo) {
@@ -162,6 +161,7 @@ public class LPGDashStorage extends SqlStorage {
 		}
 
 		try {
+
 			Set<Environment> notfullyProcessed = new HashSet<Environment>();
 			for (Environment e : environmentTransientQ) {
 				List<Integer> forRemoval = new LinkedList<Integer>();
@@ -183,11 +183,12 @@ public class LPGDashStorage extends SqlStorage {
 					String[] canons = { "w_F1a", "w_F1b", "w_F1c", "w_F2",
 							"w_F3", "w_F4", "w_F5", "w_F6" };
 					for (int i = 0; i < canons.length; i++) {
-						if (props.containsKey(canons[i]))
+						if (props.containsKey(canons[i])) {
 							insertRound.setDouble(4 + i,
 									Double.parseDouble(props.get(canons[i])));
-						else
+						} else {
 							insertRound.setNull(4 + i, Types.DOUBLE);
+						}
 					}
 					insertRound.addBatch();
 
@@ -203,13 +204,13 @@ public class LPGDashStorage extends SqlStorage {
 		} catch (SQLException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);
-		} catch (InterruptedException e) {
-			e.printStackTrace();
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
 		}
 
 	}
 
-	private double getProperty(Map<String, String> properties, String key,
+	protected double getProperty(Map<String, String> properties, String key,
 			double defaultValue) {
 		if (properties.containsKey(key))
 			return Double.parseDouble(properties.get(key));
@@ -231,6 +232,7 @@ public class LPGDashStorage extends SqlStorage {
 		}
 
 		try {
+
 			Set<Agent> notfullyProcessed = new HashSet<Agent>();
 			for (Agent a : agentTransientQ) {
 				List<Integer> forRemoval = new LinkedList<Integer>();

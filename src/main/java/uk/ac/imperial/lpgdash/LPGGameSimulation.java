@@ -118,12 +118,11 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		session.setGlobal("storage", this.storage);
 
 		Cluster[] clusterArr = initClusters();
-		Cheat cheatMethod = getCheatOn();
 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta,
-					cheatMethod));
+					getCheatOn()));
 			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -133,7 +132,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha,
-					beta, cheatMethod));
+					beta, getCheatOn()));
 			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -180,7 +179,10 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				return c;
 			}
 		}
-		return Cheat.PROVISION;
+		Cheat[] cs = Cheat.values();
+		Cheat c = cs[Random.randomInt(cs.length)];
+		logger.debug("Cheat on: " + c);
+		return c;
 	}
 
 	@Override

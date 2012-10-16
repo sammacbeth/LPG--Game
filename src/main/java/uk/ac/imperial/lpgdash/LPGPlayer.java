@@ -85,6 +85,7 @@ public class LPGPlayer extends AbstractParticipant {
 			this.persist.setProperty("c", Double.toString(this.c));
 			this.persist.setProperty("alpha", Double.toString(this.alpha));
 			this.persist.setProperty("beta", Double.toString(this.beta));
+			this.persist.setProperty("cheatOn", this.cheatOn.name());
 		}
 	}
 

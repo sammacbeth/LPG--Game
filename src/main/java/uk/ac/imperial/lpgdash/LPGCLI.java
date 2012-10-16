@@ -1,5 +1,6 @@
 package uk.ac.imperial.lpgdash;
 
+import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -10,25 +11,31 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
 import org.apache.commons.cli.GnuParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Option;
+import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
+import uk.ac.imperial.lpgdash.db.ConnectionlessStorage;
 import uk.ac.imperial.lpgdash.db.Queries;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.gui.LPGGui;
 import uk.ac.imperial.presage2.core.cli.Presage2CLI;
+import uk.ac.imperial.presage2.core.db.DatabaseService;
 import uk.ac.imperial.presage2.core.db.StorageService;
 import uk.ac.imperial.presage2.core.db.persistent.PersistentAgent;
 import uk.ac.imperial.presage2.core.db.persistent.PersistentSimulation;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
+import uk.ac.imperial.presage2.core.simulator.RunnableSimulation;
 
 public class LPGCLI extends Presage2CLI {
 
@@ -59,6 +66,9 @@ public class LPGCLI extends Presage2CLI {
 				.put("multi_cluster",
 						"Multi-cluster scenario with lc_so and random allocations over beta {0.1,0.4}");
 		experiments.put("memory", "Increasing agent memory sizes");
+		experiments.put("hack", "Check hacks.");
+		experiments.put("large_pop", "Large population.");
+		experiments.put("optimal", "Find the optimal cheat strategy.");
 
 		OptionGroup exprOptions = new OptionGroup();
 		for (String key : experiments.keySet()) {
@@ -120,6 +130,12 @@ public class LPGCLI extends Presage2CLI {
 			multi_cluster(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("memory")) {
 			memory(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("hack")) {
+			weight_mechanisms(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("large_pop")) {
+			large_pop(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("optimal")) {
+			optimal(repeats, seed);
 		}
 
 	}
@@ -178,7 +194,7 @@ public class LPGCLI extends Presage2CLI {
 					}
 
 					PersistentSimulation sim = getDatabase().createSimulation(
-							cluster.name() + "_" + pop,
+							cluster.name() + "_" + pop + "_rand",
 							"uk.ac.imperial.lpgdash.LPGGameSimulation",
 							"AUTO START", rounds);
 
@@ -194,7 +210,7 @@ public class LPGCLI extends Presage2CLI {
 					sim.addParameter("soHd", Boolean.toString(true));
 					sim.addParameter("soHack", Boolean.toString(true));
 					sim.addParameter("clusters", cluster.name());
-					sim.addParameter("cheatOn", Cheat.PROVISION.name());
+					sim.addParameter("cheatOn", "random");
 
 					logger.info("Created sim: " + sim.getID() + " - "
 							+ sim.getName());
@@ -233,11 +249,11 @@ public class LPGCLI extends Presage2CLI {
 	}
 
 	void memory(int repeats, int seed) {
-		int rounds = 1002;
+		int rounds = 2002;
 		for (int i = 0; i < repeats; i++) {
-			for (int memory : new int[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15, 20 }) {
+			for (int memory : new int[] { 1, 10, 50, 100, 200 }) {
 				PersistentSimulation sim = getDatabase().createSimulation(
-						"memory_" + String.format("%2d", memory),
+						"memory_nh_" + String.format("%3d", memory),
 						"uk.ac.imperial.lpgdash.LPGGameSimulation",
 						"AUTO START", rounds);
 				sim.addParameter("finishTime", Integer.toString(rounds));
@@ -249,13 +265,133 @@ public class LPGCLI extends Presage2CLI {
 				sim.addParameter("ncCount", Integer.toString(10));
 				sim.addParameter("ncPCheat", Double.toString(0.25));
 				sim.addParameter("seed", Integer.toString(seed + i));
-				sim.addParameter("soHack", Boolean.toString(true));
+				sim.addParameter("soHd", Boolean.toString(false));
+				sim.addParameter("soHack", Boolean.toString(false));
 				sim.addParameter("clusters", Allocation.LC_SO.name());
 				sim.addParameter("cheatOn", Cheat.PROVISION.name());
 				sim.addParameter("rankMemory", Integer.toString(memory));
 
 				logger.info("Created sim: " + sim.getID() + " - "
 						+ sim.getName());
+			}
+		}
+		stopDatabase();
+	}
+
+	void weight_mechanisms(int repeats, int seed) {
+		int rounds = 1002;
+		for (int i = 0; i < repeats; i++) {
+			for (boolean soHd : new boolean[] { false, true }) {
+				for (boolean soHack : new boolean[] { false, true }) {
+					PersistentSimulation sim = getDatabase().createSimulation(
+							"wm_" + (soHd ? "t" : "f") + "_"
+									+ (soHack ? "t" : "f"),
+							"uk.ac.imperial.lpgdash.LPGGameSimulation",
+							"AUTO START", rounds);
+					sim.addParameter("finishTime", Integer.toString(rounds));
+					sim.addParameter("alpha", Double.toString(0.1));
+					sim.addParameter("beta", Double.toString(0.1));
+					sim.addParameter("gamma", Double.toString(0.1));
+					sim.addParameter("cCount", Integer.toString(20));
+					sim.addParameter("cPCheat", Double.toString(0.02));
+					sim.addParameter("ncCount", Integer.toString(10));
+					sim.addParameter("ncPCheat", Double.toString(0.25));
+					sim.addParameter("seed", Integer.toString(seed + i));
+					sim.addParameter("soHd", Boolean.toString(soHd));
+					sim.addParameter("soHack", Boolean.toString(soHack));
+					sim.addParameter("clusters", Allocation.LC_SO.name());
+					sim.addParameter("cheatOn", Cheat.PROVISION.name());
+
+					logger.info("Created sim: " + sim.getID() + " - "
+							+ sim.getName());
+				}
+			}
+		}
+		stopDatabase();
+	}
+
+	void large_pop(int repeats, int seed) {
+		Allocation[] clusters = { Allocation.RANDOM, Allocation.LC_FIXED,
+				Allocation.LC_SO };
+		int rounds = 2002;
+		int agents = 100;
+
+		for (int i = 0; i < repeats; i++) {
+			for (Allocation cluster : clusters) {
+				for (double ncProp : new double[] { 0.0, 0.2, 0.4, 0.6, 0.8,
+						1.0 }) {
+					int nc = (int) Math.round(agents * ncProp);
+
+					PersistentSimulation sim = getDatabase().createSimulation(
+							cluster.name() + "_" + String.format("%03d", nc)
+									+ "_dem",
+							"uk.ac.imperial.lpgdash.LPGGameSimulation",
+							"AUTO START", rounds);
+
+					sim.addParameter("finishTime", Integer.toString(rounds));
+					sim.addParameter("alpha", Double.toString(0.1));
+					sim.addParameter("beta", Double.toString(0.1));
+					sim.addParameter("gamma", Double.toString(0.1));
+					sim.addParameter("cCount", Integer.toString(agents - nc));
+					sim.addParameter("cPCheat", Double.toString(0.02));
+					sim.addParameter("ncCount", Integer.toString(nc));
+					sim.addParameter("ncPCheat", Double.toString(0.25));
+					sim.addParameter("seed", Integer.toString(seed + i));
+					sim.addParameter("soHd", Boolean.toString(true));
+					sim.addParameter("soHack", Boolean.toString(true));
+					sim.addParameter("clusters", cluster.name());
+					sim.addParameter("cheatOn", Cheat.DEMAND.name());
+
+					logger.info("Created sim: " + sim.getID() + " - "
+							+ sim.getName());
+				}
+			}
+		}
+		stopDatabase();
+	}
+
+	void optimal(int repeats, int seed) {
+		Allocation[] clusters = { Allocation.RANDOM, Allocation.LC_FIXED,
+				Allocation.LC_SO };
+		Cheat[] cheatMethods = { Cheat.DEMAND, Cheat.PROVISION,
+				Cheat.APPROPRIATE };
+		int rounds = 2002;
+
+		// minority optimal
+		for (int i = 0; i < repeats; i++) {
+			for (Allocation cluster : clusters) {
+				for (Cheat ch : cheatMethods) {
+					double ncStrat = 0.0;
+					while (ncStrat <= 1.0) {
+						String stratStr = Double.toString(ncStrat);
+						stratStr = stratStr.substring(0,
+								Math.min(4, stratStr.length()));
+
+						PersistentSimulation sim = getDatabase()
+								.createSimulation(
+										"min_" + cluster.name() + "_"
+												+ stratStr + "_"
+												+ ch.name().substring(0, 3),
+										"uk.ac.imperial.lpgdash.LPGGameSimulation",
+										"AUTO START", rounds);
+
+						sim.addParameter("finishTime", Integer.toString(rounds));
+						sim.addParameter("alpha", Double.toString(0.1));
+						sim.addParameter("beta", Double.toString(0.1));
+						sim.addParameter("gamma", Double.toString(0.1));
+						sim.addParameter("cCount", Integer.toString(20));
+						sim.addParameter("cPCheat", Double.toString(0.02));
+						sim.addParameter("ncCount", Integer.toString(10));
+						sim.addParameter("ncPCheat", Double.toString(ncStrat));
+						sim.addParameter("seed", Integer.toString(seed + i));
+						sim.addParameter("soHd", Boolean.toString(true));
+						sim.addParameter("soHack", Boolean.toString(true));
+						sim.addParameter("clusters", cluster.name());
+						sim.addParameter("cheatOn", ch.name());
+
+						ncStrat += 0.05;
+					}
+				}
 			}
 		}
 		stopDatabase();
@@ -536,5 +672,83 @@ public class LPGCLI extends Presage2CLI {
 			args = new String[] { args[1], Boolean.toString(true) };
 			LPGGui.main(args);
 		}
+	}
+
+	@SuppressWarnings("static-access")
+	@Command(name = "run_hpc", description = "Run sim in hpc mode (reduced db connections)")
+	public void run_connectionless(String[] args) throws Exception {
+
+		int threads = 4;
+		int retries = 3;
+
+		Options options = new Options();
+		options.addOption(OptionBuilder.withArgName("url").hasArg()
+				.withDescription("Database url.").isRequired()
+				.create("url"));
+		options.addOption(OptionBuilder.withArgName("user").hasArg()
+				.withDescription("Database user.").isRequired()
+				.create("user"));
+		options.addOption(OptionBuilder.withArgName("password").hasArg()
+				.withDescription("Database user's password.").isRequired()
+				.create("password"));
+		options.addOption("r", "retry", true,
+				"Number of times to attempt db reconnect.");
+		options.addOption("t", "threads", true,
+				"Number of threads for the simulator (default " + threads
+						+ ").");
+		options.addOption("h", "help", false, "Show help");
+
+		CommandLineParser parser = new GnuParser();
+		CommandLine cmd;
+		try {
+			cmd = parser.parse(options, args);
+		} catch (ParseException e) {
+			System.err.println(e.getMessage());
+			new HelpFormatter()
+					.printHelp("presage2cli run <ID>", options, true);
+			return;
+		}
+		if (cmd.hasOption("h") || args.length < 2) {
+			new HelpFormatter()
+					.printHelp("presage2cli run <ID>", options, true);
+			return;
+		}
+		if (cmd.hasOption("t")) {
+			try {
+				threads = Integer.parseInt(cmd.getOptionValue("t"));
+			} catch (NumberFormatException e) {
+				System.err.println("Thread no. should be in integer.");
+				return;
+			}
+		}
+		if (cmd.hasOption("r")) {
+			try {
+				retries = Integer.parseInt(cmd.getOptionValue("r"));
+			} catch (NumberFormatException e) {
+				System.err.println("Retries no. should be in integer.");
+				return;
+			}
+		}
+
+		long simulationID;
+		try {
+			simulationID = Long.parseLong(args[1]);
+		} catch (NumberFormatException e) {
+			System.err.println("Simulation ID should be an integer.");
+			return;
+		}
+
+		Properties jdbcInfo = new Properties();
+		jdbcInfo.put("driver", "com.mysql.jdbc.Driver");
+		jdbcInfo.put("url", cmd.getOptionValue("url"));
+		jdbcInfo.put("user", cmd.getOptionValue("user"));
+		jdbcInfo.put("password", cmd.getOptionValue("password"));
+		ConnectionlessStorage storage = new ConnectionlessStorage(jdbcInfo, retries);
+		DatabaseService db = storage;
+		db.start();
+
+		RunnableSimulation.runSimulationID(db, storage, simulationID, threads);
+
+		db.stop();
 	}
 }
