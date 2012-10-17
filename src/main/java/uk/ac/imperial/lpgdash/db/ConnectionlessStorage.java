@@ -46,7 +46,19 @@ public class ConnectionlessStorage extends LPGDashStorage {
 	}
 
 	@Override
+	public synchronized void incrementTime() {
+		if (connected && !shutdown) {
+			logger.info("Drop connection");
+			super.stop();
+			connected = false;
+			shutdown = false;
+		}
+		super.incrementTime();
+	}
+
+	@Override
 	public void start() throws Exception {
+		shutdown = false;
 		for (int i = 0; i < retries; i++) {
 			try {
 				super.start();
@@ -60,39 +72,33 @@ public class ConnectionlessStorage extends LPGDashStorage {
 			}
 		}
 		connected = true;
-		if (!shutdown) {
-			Timer stop = new Timer();
-			stop.schedule(new TimerTask() {
-				@Override
-				public void run() {
-					ConnectionlessStorage.super.stop();
-					connected = false;
-				}
-			}, 2500);
-		}
 	}
 
 	@Override
 	public synchronized void stop() {
-		shutdown = true;
-		if (!connected) {
-			try {
-				start();
-			} catch (Exception e) {
-				logger.warn(e);
+		if (!shutdown) {
+			shutdown = true;
+			logger.info("Reconnect");
+			if (!connected) {
+				try {
+					start();
+				} catch (Exception e) {
+					logger.warn(e);
+				}
 			}
-		}
-		super.stop();
-		for (FileWriter fw : outputFiles.values()) {
-			try {
-				fw.flush();
-				fw.close();
-			} catch (IOException e) {
-				e.printStackTrace();
-			}
+			super.stop();
+			connected = false;
+			for (FileWriter fw : outputFiles.values()) {
+				try {
+					fw.flush();
+					fw.close();
+				} catch (IOException e) {
+					e.printStackTrace();
+				}
 
+			}
+			outputFiles.clear();
 		}
-		outputFiles.clear();
 	}
 
 	@Override
