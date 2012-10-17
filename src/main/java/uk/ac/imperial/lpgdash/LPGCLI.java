@@ -1,11 +1,9 @@
 package uk.ac.imperial.lpgdash;
 
-import java.lang.reflect.InvocationTargetException;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -22,7 +20,6 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.apache.log4j.Level;
 import org.apache.log4j.Logger;
 
 import uk.ac.imperial.lpgdash.db.ConnectionlessStorage;
@@ -394,6 +391,43 @@ public class LPGCLI extends Presage2CLI {
 				}
 			}
 		}
+		// majority optimal
+		for (int i = 0; i < repeats; i++) {
+			for (Allocation cluster : clusters) {
+				for (Cheat ch : cheatMethods) {
+					double cStrat = 0.0;
+					while (cStrat <= 1.0) {
+						String stratStr = Double.toString(cStrat);
+						stratStr = stratStr.substring(0,
+								Math.min(4, stratStr.length()));
+
+						PersistentSimulation sim = getDatabase()
+								.createSimulation(
+										"maj_" + cluster.name() + "_"
+												+ stratStr + "_"
+												+ ch.name().substring(0, 3),
+										"uk.ac.imperial.lpgdash.LPGGameSimulation",
+										"AUTO START", rounds);
+
+						sim.addParameter("finishTime", Integer.toString(rounds));
+						sim.addParameter("alpha", Double.toString(0.1));
+						sim.addParameter("beta", Double.toString(0.1));
+						sim.addParameter("gamma", Double.toString(0.1));
+						sim.addParameter("cCount", Integer.toString(20));
+						sim.addParameter("cPCheat", Double.toString(cStrat));
+						sim.addParameter("ncCount", Integer.toString(10));
+						sim.addParameter("ncPCheat", Double.toString(0.25));
+						sim.addParameter("seed", Integer.toString(seed + i));
+						sim.addParameter("soHd", Boolean.toString(true));
+						sim.addParameter("soHack", Boolean.toString(true));
+						sim.addParameter("clusters", cluster.name());
+						sim.addParameter("cheatOn", ch.name());
+
+						cStrat += 0.05;
+					}
+				}
+			}
+		}
 		stopDatabase();
 	}
 
@@ -683,11 +717,9 @@ public class LPGCLI extends Presage2CLI {
 
 		Options options = new Options();
 		options.addOption(OptionBuilder.withArgName("url").hasArg()
-				.withDescription("Database url.").isRequired()
-				.create("url"));
+				.withDescription("Database url.").isRequired().create("url"));
 		options.addOption(OptionBuilder.withArgName("user").hasArg()
-				.withDescription("Database user.").isRequired()
-				.create("user"));
+				.withDescription("Database user.").isRequired().create("user"));
 		options.addOption(OptionBuilder.withArgName("password").hasArg()
 				.withDescription("Database user's password.").isRequired()
 				.create("password"));
@@ -743,7 +775,8 @@ public class LPGCLI extends Presage2CLI {
 		jdbcInfo.put("url", cmd.getOptionValue("url"));
 		jdbcInfo.put("user", cmd.getOptionValue("user"));
 		jdbcInfo.put("password", cmd.getOptionValue("password"));
-		ConnectionlessStorage storage = new ConnectionlessStorage(jdbcInfo, retries);
+		ConnectionlessStorage storage = new ConnectionlessStorage(jdbcInfo,
+				retries);
 		DatabaseService db = storage;
 		db.start();
 
