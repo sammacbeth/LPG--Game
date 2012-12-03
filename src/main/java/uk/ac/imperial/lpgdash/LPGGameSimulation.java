@@ -10,6 +10,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
+import uk.ac.imperial.lpgdash.LPGPlayer.ClusterLeaveAlgorithm;
+import uk.ac.imperial.lpgdash.LPGPlayer.ClusterSelectionAlgorithm;
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
@@ -72,6 +74,13 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Parameter(name = "cheatOn", optional = true)
 	public String cheatOn = "provision";
 
+	@Parameter(name = "clusterLeave", optional = true)
+	public String clusterLeave = ClusterLeaveAlgorithm.THRESHOLD.name();
+	@Parameter(name = "clusterSelect", optional = true)
+	public String clusterSelect = ClusterSelectionAlgorithm.PREFERRED.name();
+	@Parameter(name = "resetSatisfaction", optional = true)
+	public boolean resetSatisfaction = false;
+
 	@Parameter(name = "rankMemory", optional = true)
 	public int rankMemory = 1;
 
@@ -122,7 +131,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < cCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "c" + n, cPCheat, alpha, beta,
-					getCheatOn()));
+					getCheatOn(), getClusterLeave(), getClusterSelect(),
+					resetSatisfaction));
 			Player p = new Player(pid, "c" + n, "C", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -132,7 +142,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		for (int n = 0; n < ncCount; n++) {
 			UUID pid = Random.randomUUID();
 			s.addParticipant(new LPGPlayer(pid, "nc" + n, ncPCheat, alpha,
-					beta, getCheatOn()));
+					beta, getCheatOn(), getClusterLeave(), getClusterSelect(),
+					resetSatisfaction));
 			Player p = new Player(pid, "nc" + n, "N", alpha, beta);
 			players.add(p);
 			session.insert(p);
@@ -183,6 +194,14 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		Cheat c = cs[Random.randomInt(cs.length)];
 		logger.debug("Cheat on: " + c);
 		return c;
+	}
+
+	public ClusterLeaveAlgorithm getClusterLeave() {
+		return ClusterLeaveAlgorithm.valueOf(clusterLeave);
+	}
+
+	public ClusterSelectionAlgorithm getClusterSelect() {
+		return ClusterSelectionAlgorithm.valueOf(clusterSelect);
 	}
 
 	@Override

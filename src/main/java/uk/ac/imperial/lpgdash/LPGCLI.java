@@ -20,8 +20,10 @@ import org.apache.commons.cli.OptionBuilder;
 import org.apache.commons.cli.OptionGroup;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
+import uk.ac.imperial.lpgdash.LPGPlayer.ClusterSelectionAlgorithm;
 import uk.ac.imperial.lpgdash.db.ConnectionlessStorage;
 import uk.ac.imperial.lpgdash.db.Queries;
 import uk.ac.imperial.lpgdash.facts.Allocation;
@@ -66,6 +68,7 @@ public class LPGCLI extends Presage2CLI {
 		experiments.put("hack", "Check hacks.");
 		experiments.put("large_pop", "Large population.");
 		experiments.put("optimal", "Find the optimal cheat strategy.");
+		experiments.put("boltzmann", "Use boltzmann dist to choose clusters");
 
 		OptionGroup exprOptions = new OptionGroup();
 		for (String key : experiments.keySet()) {
@@ -133,6 +136,8 @@ public class LPGCLI extends Presage2CLI {
 			large_pop(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("optimal")) {
 			optimal(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("boltzmann")) {
+			boltzmann_multi_cluster(repeats, seed);
 		}
 
 	}
@@ -321,7 +326,7 @@ public class LPGCLI extends Presage2CLI {
 
 					PersistentSimulation sim = getDatabase().createSimulation(
 							cluster.name() + "_" + String.format("%03d", nc)
-									+ "_dem",
+									+ "_app",
 							"uk.ac.imperial.lpgdash.LPGGameSimulation",
 							"AUTO START", rounds);
 
@@ -337,7 +342,7 @@ public class LPGCLI extends Presage2CLI {
 					sim.addParameter("soHd", Boolean.toString(true));
 					sim.addParameter("soHack", Boolean.toString(true));
 					sim.addParameter("clusters", cluster.name());
-					sim.addParameter("cheatOn", Cheat.DEMAND.name());
+					sim.addParameter("cheatOn", Cheat.APPROPRIATE.name());
 
 					logger.info("Created sim: " + sim.getID() + " - "
 							+ sim.getName());
@@ -426,6 +431,68 @@ public class LPGCLI extends Presage2CLI {
 						cStrat += 0.05;
 					}
 				}
+			}
+		}
+		stopDatabase();
+	}
+
+	void boltzmann_multi_cluster(int repeats, int seed) {
+		Allocation[] clusters = { Allocation.RANDOM, Allocation.LC_FIXED,
+				Allocation.LC_SO };
+		Cheat[] cheatMethods = { Cheat.DEMAND, Cheat.PROVISION,
+				Cheat.APPROPRIATE };
+		int rounds = 5002;
+
+		for (int i = 0; i < repeats; i++) {
+			for (boolean resetSat : new boolean[] { false, true }) {
+				for (Cheat ch : cheatMethods) {
+					PersistentSimulation sim = getDatabase().createSimulation(
+							"boltzmann_" + (resetSat ? "reset" : "base") + "_"
+									+ ch.name().substring(0, 3),
+							"uk.ac.imperial.lpgdash.LPGGameSimulation",
+							"AUTO START", rounds);
+					sim.addParameter("finishTime", Integer.toString(rounds));
+					sim.addParameter("alpha", Double.toString(0.1));
+					sim.addParameter("beta", Double.toString(0.1));
+					sim.addParameter("gamma", Double.toString(0.1));
+					sim.addParameter("cCount", Integer.toString(60));
+					sim.addParameter("cPCheat", Double.toString(0.02));
+					sim.addParameter("ncCount", Integer.toString(30));
+					sim.addParameter("ncPCheat", Double.toString(0.25));
+					sim.addParameter("seed", Integer.toString(seed + i));
+					sim.addParameter("soHd", Boolean.toString(true));
+					sim.addParameter("soHack", Boolean.toString(true));
+					sim.addParameter("clusters",
+							StringUtils.join(clusters, ','));
+					sim.addParameter("cheatOn", ch.name());
+					sim.addParameter("clusterSelect",
+							ClusterSelectionAlgorithm.BOLTZMANN.name());
+					sim.addParameter("resetSatisfaction", Boolean.toString(resetSat));
+				}
+			}
+		}
+		// control
+		for (int i = 0; i < repeats; i++) {
+			for (Cheat ch : cheatMethods) {
+				PersistentSimulation sim = getDatabase().createSimulation(
+						"control_" + ch.name().substring(0, 3),
+						"uk.ac.imperial.lpgdash.LPGGameSimulation",
+						"AUTO START", rounds);
+				sim.addParameter("finishTime", Integer.toString(rounds));
+				sim.addParameter("alpha", Double.toString(0.1));
+				sim.addParameter("beta", Double.toString(0.1));
+				sim.addParameter("gamma", Double.toString(0.1));
+				sim.addParameter("cCount", Integer.toString(60));
+				sim.addParameter("cPCheat", Double.toString(0.02));
+				sim.addParameter("ncCount", Integer.toString(30));
+				sim.addParameter("ncPCheat", Double.toString(0.25));
+				sim.addParameter("seed", Integer.toString(seed + i));
+				sim.addParameter("soHd", Boolean.toString(true));
+				sim.addParameter("soHack", Boolean.toString(true));
+				sim.addParameter("clusters", StringUtils.join(clusters, ','));
+				sim.addParameter("cheatOn", ch.name());
+				sim.addParameter("clusterSelect",
+						ClusterSelectionAlgorithm.PREFERRED.name());
 			}
 		}
 		stopDatabase();

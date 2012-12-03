@@ -1,9 +1,13 @@
 package uk.ac.imperial.lpgdash;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+
+import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 import uk.ac.imperial.lpgdash.actions.Appropriate;
 import uk.ac.imperial.lpgdash.actions.Demand;
@@ -11,6 +15,7 @@ import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LeaveCluster;
 import uk.ac.imperial.lpgdash.actions.Provision;
 import uk.ac.imperial.lpgdash.facts.Cluster;
+import uk.ac.imperial.lpgdash.util.BolzmannDistribution;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 import uk.ac.imperial.presage2.core.environment.ActionHandlingException;
 import uk.ac.imperial.presage2.core.environment.ParticipantSharedState;
@@ -20,6 +25,14 @@ import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 
 public class LPGPlayer extends AbstractParticipant {
+
+	enum ClusterLeaveAlgorithm {
+		INSTANT, THRESHOLD
+	};
+
+	enum ClusterSelectionAlgorithm {
+		PREFERRED, BOLTZMANN
+	};
 
 	double g = 0;
 	double q = 0;
@@ -40,12 +53,15 @@ public class LPGPlayer extends AbstractParticipant {
 
 	Cluster cluster = null;
 	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
+	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
 
 	protected LPGService game;
 
-	boolean newLeave = true;
+	ClusterLeaveAlgorithm clusterLeave = ClusterLeaveAlgorithm.THRESHOLD;
+	ClusterSelectionAlgorithm clusterSelection = ClusterSelectionAlgorithm.BOLTZMANN;
 	int clusterDissatisfactionCount = 0;
 	int leaveThreshold = 3;
+	boolean resetSatisfaction = false;
 
 	public LPGPlayer(UUID id, String name) {
 		super(id, name);
@@ -60,9 +76,13 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
-			double beta, Cheat cheatOn) {
+			double beta, Cheat cheatOn, ClusterLeaveAlgorithm clLeave,
+			ClusterSelectionAlgorithm clSel, boolean resetSatisfaction) {
 		this(id, name, pCheat, alpha, beta);
 		this.cheatOn = cheatOn;
+		this.clusterLeave = clLeave;
+		this.clusterSelection = clSel;
+		this.resetSatisfaction = resetSatisfaction;
 	}
 
 	@Override
@@ -110,7 +130,8 @@ public class LPGPlayer extends AbstractParticipant {
 				// determine utility gained from last round
 				calculateScores();
 			}
-			if (newLeave || game.getRoundNumber() % 20 == 0) {
+			if (!(clusterLeave == ClusterLeaveAlgorithm.INSTANT)
+					|| game.getRoundNumber() % 20 == 0) {
 				assessClusterMembership();
 				if (this.cluster == null) {
 					return;
@@ -202,7 +223,7 @@ public class LPGPlayer extends AbstractParticipant {
 		else
 			u = a * rTotal - c * (q - rTotal);
 
-		if (r >= d)
+		if (rP >= d)
 			satisfaction = satisfaction + alpha * (1 - satisfaction);
 		else
 			satisfaction = satisfaction - beta * satisfaction;
@@ -225,9 +246,19 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("o", Double.toString(satisfaction));
 			state.setProperty("cluster", Integer.toString(this.cluster.getId()));
 		}
+
+		// initialise/update cluster utilities
+		if (clusterUtilities.size() == 0) {
+			Set<Cluster> availableClusters = this.game.getClusters();
+			for (Cluster c : availableClusters) {
+				clusterUtilities.put(c, new SummaryStatistics());
+			}
+		}
+		clusterUtilities.get(this.cluster).addValue(u);
 	}
 
 	private void assessClusterMembership() {
+		// initialise/update cluster satisfaction
 		if (clusterSatisfaction.size() == 0) {
 			Set<Cluster> availableClusters = this.game.getClusters();
 			for (Cluster c : availableClusters) {
@@ -239,6 +270,7 @@ public class LPGPlayer extends AbstractParticipant {
 		} else {
 			clusterSatisfaction.put(this.cluster, this.satisfaction);
 		}
+
 		Cluster preferred = this.cluster;
 		double maxSatisfaction = this.satisfaction;
 		for (Map.Entry<Cluster, Double> e : clusterSatisfaction.entrySet()) {
@@ -257,16 +289,48 @@ public class LPGPlayer extends AbstractParticipant {
 		}
 		// if we are dissatisfied for greater than the leave threshold, leave or
 		// change cluster.
-		if (!newLeave
+		if (clusterLeave == ClusterLeaveAlgorithm.INSTANT
 				|| this.clusterDissatisfactionCount >= this.leaveThreshold) {
-			if (maxSatisfaction < 0.1) {
-				leaveCluster();
-				this.cluster = null;
-			} else if (!preferred.equals(this.cluster)) {
-				leaveCluster();
-				joinCluster(preferred);
-				this.cluster = preferred;
-				this.satisfaction = clusterSatisfaction.get(preferred);
+			if (clusterSelection == ClusterSelectionAlgorithm.PREFERRED) {
+				if (maxSatisfaction < 0.1) {
+					leaveCluster();
+					this.cluster = null;
+				} else if (!preferred.equals(this.cluster)) {
+					leaveCluster();
+					joinCluster(preferred);
+					this.cluster = preferred;
+					this.satisfaction = clusterSatisfaction.get(preferred);
+				}
+			} else if (clusterSelection == ClusterSelectionAlgorithm.BOLTZMANN) {
+				BolzmannDistribution<Cluster> b = new BolzmannDistribution<Cluster>();
+				// find clusters with no recorded utilities
+				List<Cluster> unknownClusters = new ArrayList<Cluster>();
+				for (Map.Entry<Cluster, SummaryStatistics> e : clusterUtilities
+						.entrySet()) {
+					if (e.getValue().getN() == 0)
+						unknownClusters.add(e.getKey());
+					else
+						b.addValue(e.getKey(), e.getValue().getMean());
+				}
+
+				// join random unknown cluster
+				if (unknownClusters.size() > 0) {
+					leaveCluster();
+					logger.info("Chose unknown by random.");
+					joinCluster(unknownClusters.get(Random
+							.randomInt(unknownClusters.size())));
+				} else {
+					Cluster chosen = b.choose();
+					logger.info("Chose " + chosen + " by Boltzmann dist.");
+					if (chosen != this.cluster) {
+						leaveCluster();
+						joinCluster(chosen);
+						if(resetSatisfaction) {
+							clusterSatisfaction.put(chosen, 0.5);
+						}
+						this.satisfaction = clusterSatisfaction.get(chosen);
+					}
+				}
 			}
 		}
 	}
