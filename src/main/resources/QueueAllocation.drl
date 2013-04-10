@@ -1,0 +1,38 @@
+package uk.ac.imperial.lpgdash
+
+import java.util.List
+
+import uk.ac.imperial.lpgdash.ProvisionPool
+import uk.ac.imperial.lpgdash.actions.*
+import uk.ac.imperial.lpgdash.facts.*
+import uk.ac.imperial.lpgdash.RoundType
+import uk.ac.imperial.lpgdash.allocators.QueueAllocator
+
+rule "Queue resource allocation"
+	no-loop
+	salience -2
+	when
+		$r : Round( type == RoundType.DEMAND, $t : number, $tm : number - 1 )
+		not Processed( $r ;)
+		$c : Cluster( $method : allocationMethod, allocationMethod == Allocation.QUEUE )
+		$pool : ProvisionPool( cluster == $c )
+		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+		$q : QueueAllocator( c == $c )
+	then
+		logger.info( $method +" allocation for resources " + $c);
+		$q.allocate($poolMembers, $pool.getQuantity(), $t );
+		modify( $pool ) {
+			setQuantity(0);
+		}
+		insert( new Processed( $r ) );
+end
+
+rule "Penalise non-compliance"
+	when
+		MemberOf( $p : player, $c : cluster, cluster.allocationMethod == Allocation.QUEUE )
+		$q : QueueAllocator( c == $c )
+		Round( $t : number, type == RoundType.APPROPRIATE )
+		not compliantRound( $c , $p, $t ;) 
+	then
+		$q.penalise($p);
+end

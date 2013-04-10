@@ -16,6 +16,7 @@ import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
 import uk.ac.imperial.lpgdash.allocators.LegitimateClaims;
+import uk.ac.imperial.lpgdash.allocators.QueueAllocator;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -113,6 +114,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				.addClasspathDrlFile("RationAllocation.drl")
 				.addClasspathDrlFile("RandomAllocation.drl")
 				.addClasspathDrlFile("LegitimateClaimsAllocation.drl")
+				.addClasspathDrlFile("QueueAllocation.drl")
 				.addStateTranslator(SimParticipantsTranslator.class));
 		modules.add(NetworkModule.noNetworkModule());
 		return modules;
@@ -178,6 +180,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				lc.soHd = soHd;
 				lc.rankMemory = rankMemory;
 				session.insert(lc);
+			} else if(c.getAllocationMethod() == Allocation.QUEUE) {
+				QueueAllocator q = new QueueAllocator(c, session);
+				session.insert(q);
 			}
 			clusters[i] = c;
 		}
