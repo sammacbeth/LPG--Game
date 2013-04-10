@@ -20,11 +20,13 @@ import uk.ac.imperial.lpgdash.allocators.QueueAllocator;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
-import uk.ac.imperial.presage2.core.TimeDriven;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
+import uk.ac.imperial.presage2.core.event.EventBus;
+import uk.ac.imperial.presage2.core.event.EventListener;
 import uk.ac.imperial.presage2.core.simulator.InjectedSimulation;
 import uk.ac.imperial.presage2.core.simulator.Parameter;
+import uk.ac.imperial.presage2.core.simulator.ParticipantsComplete;
 import uk.ac.imperial.presage2.core.simulator.Scenario;
 import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.rules.RuleModule;
@@ -36,7 +38,7 @@ import uk.ac.imperial.presage2.util.network.NetworkModule;
 import com.google.inject.AbstractModule;
 import com.google.inject.Inject;
 
-public class LPGGameSimulation extends InjectedSimulation implements TimeDriven {
+public class LPGGameSimulation extends InjectedSimulation {
 
 	private final Logger logger = Logger
 			.getLogger("uk.ac.imperial.lpgdash.RuleEngine");
@@ -103,6 +105,11 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		}
 	}
 
+	@Inject
+	public void setEventBus(EventBus eb) {
+		eb.subscribe(this);
+	}
+
 	@Override
 	protected Set<AbstractModule> getModules() {
 		Set<AbstractModule> modules = new HashSet<AbstractModule>();
@@ -123,7 +130,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	@Override
 	protected void addToScenario(Scenario s) {
 		Random.seed = this.seed;
-		s.addTimeDriven(this);
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.storage);
@@ -180,7 +186,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 				lc.soHd = soHd;
 				lc.rankMemory = rankMemory;
 				session.insert(lc);
-			} else if(c.getAllocationMethod() == Allocation.QUEUE) {
+			} else if (c.getAllocationMethod() == Allocation.QUEUE) {
 				QueueAllocator q = new QueueAllocator(c, session);
 				session.insert(q);
 			}
@@ -209,8 +215,8 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		return ClusterSelectionAlgorithm.valueOf(clusterSelect);
 	}
 
-	@Override
-	public void incrementTime() {
+	@EventListener
+	public void incrementTime(ParticipantsComplete e) {
 		if (this.game.getRound() == RoundType.APPROPRIATE) {
 			// generate new g and q
 			for (Player p : players) {
