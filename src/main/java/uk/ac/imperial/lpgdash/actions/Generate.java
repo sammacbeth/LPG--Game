@@ -12,8 +12,8 @@ public class Generate extends TimestampedAction {
 	public Generate(Player player, int time) {
 		super(time);
 		this.player = player;
-		this.g = Random.randomDouble();
-		this.q = this.g + (Random.randomDouble() * (1 - this.g));
+		this.g = Random.randomDouble() * player.getSizeMultiplier();
+		this.q = this.g + (Random.randomDouble() * (player.getSizeMultiplier() - this.g));
 	}
 
 	public Player getPlayer() {

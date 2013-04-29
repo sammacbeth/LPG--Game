@@ -132,7 +132,12 @@ public class LPGDashStorage extends SqlStorage {
 							+ "PRIMARY KEY (`ID`, `cluster`),"
 							+ "KEY `Name` (`Name`),"
 							+ "FOREIGN KEY (`ID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
-
+			createTables.execute("CREATE TABLE IF NOT EXISTS `players` ("
+					+ "`simID` bigint(20) NOT NULL,"
+					+ "`name` varchar(10) NOT NULL,"
+					+ "`pCheat` double NOT NULL,"
+					+ "`cheatOn` char(1) NOT NULL,"
+					+ "PRIMARY KEY (`simID`,`name`))");
 		} catch (SQLException e) {
 			logger.warn("", e);
 			throw new RuntimeException(e);
@@ -287,6 +292,38 @@ public class LPGDashStorage extends SqlStorage {
 			e.printStackTrace();
 		}
 
+	}
+
+	@Override
+	protected synchronized void updateAgents() {
+		PreparedStatement insertPlayer = null;
+		try {
+			insertPlayer = conn.prepareStatement("INSERT INTO players "
+					+ "(simID, name, pCheat, cheatOn)  "
+					+ "VALUES (?, ?, ?, ?) ");
+		} catch (SQLException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		}
+
+		try {
+			for (Agent a : agentQ) {
+				insertPlayer.setLong(1, simId);
+				insertPlayer.setString(2, a.getName());
+				insertPlayer.setDouble(3,
+						getProperty(a.properties, "pCheat", 0.0));
+				insertPlayer.setString(4, a.properties.get("cheatOn")
+						.substring(0, 1));
+				insertPlayer.addBatch();
+			}
+			batchQueryQ.put(insertPlayer);
+			agentQ.clear();
+		} catch (SQLException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
 	}
 
 	@Override

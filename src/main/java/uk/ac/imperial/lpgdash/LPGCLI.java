@@ -23,6 +23,8 @@ import org.apache.commons.cli.ParseException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.log4j.Logger;
 
+import uk.ac.imperial.lpgdash.LPGGameSimulation.MateSelection;
+import uk.ac.imperial.lpgdash.LPGGameSimulation.Reproduction;
 import uk.ac.imperial.lpgdash.LPGPlayer.ClusterSelectionAlgorithm;
 import uk.ac.imperial.lpgdash.db.ConnectionlessStorage;
 import uk.ac.imperial.lpgdash.db.Queries;
@@ -70,6 +72,7 @@ public class LPGCLI extends Presage2CLI {
 		experiments.put("optimal", "Find the optimal cheat strategy.");
 		experiments.put("boltzmann", "Use boltzmann dist to choose clusters");
 		experiments.put("cheat", "Test different cheating strategies");
+		experiments.put("evolve", "Reproducing players");
 
 		OptionGroup exprOptions = new OptionGroup();
 		for (String key : experiments.keySet()) {
@@ -141,6 +144,8 @@ public class LPGCLI extends Presage2CLI {
 			boltzmann_multi_cluster(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("cheat")) {
 			cheatOnAppropriate(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("evolve")) {
+			evolve(repeats, seed);
 		}
 
 	}
@@ -531,6 +536,49 @@ public class LPGCLI extends Presage2CLI {
 
 					logger.info("Created sim: " + sim.getID() + " - "
 							+ sim.getName());
+				}
+			}
+		}
+		stopDatabase();
+	}
+
+	void evolve(int repeats, int seed) {
+		Allocation[] clusters = { Allocation.RANDOM, Allocation.QUEUE,
+				Allocation.LC_FIXED, Allocation.LC_SO };
+		int rounds = 5000;
+		for (int i = 0; i < repeats; i++) {
+			for (String pop : new String[] { "random", "static" }) {
+				for (Reproduction rep : new Reproduction[] { Reproduction.NONE,
+						Reproduction.PERIODIC, Reproduction.RANDOM }) {
+					for (MateSelection mate : new MateSelection[] {
+							MateSelection.RANDOM, MateSelection.TOTAL_UTILITY,
+							MateSelection.ROLLING_UTILITY }) {
+						for (Allocation cl : clusters) {
+							PersistentSimulation sim = getDatabase()
+									.createSimulation(
+											StringUtils.join(
+													new String[] { cl.name(),
+															pop, rep.name(),
+															mate.name() }, '_'),
+											"uk.ac.imperial.lpgdash.LPGGameSimulation",
+											"AUTO START", rounds);
+							sim.addParameter("finishTime",
+									Integer.toString(rounds));
+							sim.addParameter("alpha", Double.toString(0.1));
+							sim.addParameter("beta", Double.toString(0.1));
+							sim.addParameter("gamma", Double.toString(0.1));
+							sim.addParameter("cCount", Integer.toString(20));
+							sim.addParameter("cPCheat", Double.toString(0.02));
+							sim.addParameter("ncCount", Integer.toString(10));
+							sim.addParameter("ncPCheat", Double.toString(0.25));
+							sim.addParameter("seed", Integer.toString(seed + i));
+							sim.addParameter("clusters", cl.name());
+							sim.addParameter("cheatOn", "random");
+							sim.addParameter("reproduction", rep.name());
+							sim.addParameter("pop", pop);
+							sim.addParameter("mateSelect", mate.name());
+						}
+					}
 				}
 			}
 		}

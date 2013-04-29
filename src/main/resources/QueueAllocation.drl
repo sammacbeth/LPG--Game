@@ -8,6 +8,8 @@ import uk.ac.imperial.lpgdash.facts.*
 import uk.ac.imperial.lpgdash.RoundType
 import uk.ac.imperial.lpgdash.allocators.QueueAllocator
 
+global org.apache.log4j.Logger logger
+
 rule "Queue resource allocation"
 	no-loop
 	salience -2

@@ -18,6 +18,8 @@ public class Player {
 	double beta = 0.1;
 	Role role = Role.PROSUMER;
 
+	double sizeMultiplier = 1;
+
 	Map<Cluster, PlayerHistory> history = new HashMap<Cluster, PlayerHistory>();
 
 	public Player(UUID aid) {
@@ -35,10 +37,16 @@ public class Player {
 		this.beta = beta;
 	}
 
+	public Player(UUID id, String name, String type, double alpha, double beta,
+			double size) {
+		this(id, name, type, alpha, beta);
+		this.sizeMultiplier = size;
+	}
+
 	@Override
 	public String toString() {
-		return "Player [" + name + ", type=" + type +", role=" + role + ", g=" + g + ", q=" + q
-				+ "]";
+		return "Player [" + name + ", type=" + type + ", role=" + role + ", g="
+				+ g + ", q=" + q + "]";
 	}
 
 	public UUID getId() {
@@ -107,6 +115,10 @@ public class Player {
 
 	public double getBeta() {
 		return beta;
+	}
+
+	public double getSizeMultiplier() {
+		return sizeMultiplier;
 	}
 
 	@Override

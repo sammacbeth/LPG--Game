@@ -9,7 +9,7 @@
 
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-		<presage.version>0.3.4-SNAPSHOT</presage.version>
+		<presage.version>0.3.4</presage.version>
 	</properties>
 
 	<dependencies>

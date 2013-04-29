@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
+import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 import uk.ac.imperial.lpgdash.actions.Appropriate;
@@ -27,7 +28,7 @@ import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 public class LPGPlayer extends AbstractParticipant {
 
 	enum ClusterLeaveAlgorithm {
-		INSTANT, THRESHOLD
+		INSTANT, THRESHOLD, NEGATIVE_UTILITY
 	};
 
 	enum ClusterSelectionAlgorithm {
@@ -54,6 +55,9 @@ public class LPGPlayer extends AbstractParticipant {
 	Cluster cluster = null;
 	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
 	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
+	DescriptiveStatistics rollingUtility = new DescriptiveStatistics(100);
+
+	double size = 1;
 
 	protected LPGService game;
 
@@ -77,12 +81,14 @@ public class LPGPlayer extends AbstractParticipant {
 
 	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
 			double beta, Cheat cheatOn, ClusterLeaveAlgorithm clLeave,
-			ClusterSelectionAlgorithm clSel, boolean resetSatisfaction) {
+			ClusterSelectionAlgorithm clSel, boolean resetSatisfaction,
+			double size) {
 		this(id, name, pCheat, alpha, beta);
 		this.cheatOn = cheatOn;
 		this.clusterLeave = clLeave;
 		this.clusterSelection = clSel;
 		this.resetSatisfaction = resetSatisfaction;
+		this.size = size;
 	}
 
 	@Override
@@ -115,10 +121,8 @@ public class LPGPlayer extends AbstractParticipant {
 		return ss;
 	}
 
-	@SuppressWarnings("deprecation")
 	@Override
 	public void execute() {
-		super.execute();
 		this.cluster = this.game.getCluster(getID());
 
 		if (this.cluster == null) {
@@ -200,6 +204,7 @@ public class LPGPlayer extends AbstractParticipant {
 	protected void leaveCluster() {
 		try {
 			environment.act(new LeaveCluster(this.cluster), getID(), authkey);
+			this.cluster = null;
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to leave cluster", e);
 		}
@@ -255,6 +260,7 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 		}
 		clusterUtilities.get(this.cluster).addValue(u);
+		rollingUtility.addValue(u);
 	}
 
 	private void assessClusterMembership() {
@@ -289,17 +295,29 @@ public class LPGPlayer extends AbstractParticipant {
 		}
 		// if we are dissatisfied for greater than the leave threshold, leave or
 		// change cluster.
-		if (clusterLeave == ClusterLeaveAlgorithm.INSTANT
-				|| this.clusterDissatisfactionCount >= this.leaveThreshold) {
+		boolean leaveCluster;
+		switch (clusterLeave) {
+		case INSTANT:
+			leaveCluster = (this.satisfaction < 0.1);
+			break;
+		case NEGATIVE_UTILITY:
+			leaveCluster = rollingUtility.getN() > 50
+					&& rollingUtility.getSum() < 0;
+			break;
+		case THRESHOLD:
+		default:
+			leaveCluster = this.clusterDissatisfactionCount >= this.leaveThreshold;
+		}
+		if (leaveCluster) {
 			if (clusterSelection == ClusterSelectionAlgorithm.PREFERRED) {
-				if (maxSatisfaction < 0.1) {
-					leaveCluster();
-					this.cluster = null;
-				} else if (!preferred.equals(this.cluster)) {
+				if (!preferred.equals(this.cluster)) {
 					leaveCluster();
 					joinCluster(preferred);
 					this.cluster = preferred;
 					this.satisfaction = clusterSatisfaction.get(preferred);
+				} else {
+					leaveCluster();
+					this.cluster = null;
 				}
 			} else if (clusterSelection == ClusterSelectionAlgorithm.BOLTZMANN) {
 				BolzmannDistribution<Cluster> b = new BolzmannDistribution<Cluster>();
@@ -325,7 +343,7 @@ public class LPGPlayer extends AbstractParticipant {
 					if (chosen != this.cluster) {
 						leaveCluster();
 						joinCluster(chosen);
-						if(resetSatisfaction) {
+						if (resetSatisfaction) {
 							clusterSatisfaction.put(chosen, 0.5);
 						}
 						this.satisfaction = clusterSatisfaction.get(chosen);

@@ -75,6 +75,10 @@ query getMemberOf(Player p)
 	m : MemberOf( player == p )
 end
 
+query clusterMembers(Cluster c)
+	MemberOf( p : player, cluster == c )
+end
+
 rule "Prune actons"
 	when
 		Round( $n : number )
@@ -287,7 +291,7 @@ rule "Surplus allocated pool"
 		modify($a) {
 			setQuantity(0);
 		}
-		insertLogical( new Processed( $a ) );
+		insert( new Processed( $a ) );
 end
 
 rule "Calculate round fairness"
