@@ -168,5 +168,5 @@ rule "LC resource allocation"
 		modify( $pool ) {
 			setQuantity(0);
 		}
-		insert( new Processed( $r ) );
+		//insert( new Processed( $r ) );
 end

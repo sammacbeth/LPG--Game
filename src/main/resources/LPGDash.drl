@@ -3,6 +3,7 @@ package uk.ac.imperial.lpgdash
 
 #list any import classes here.
 import java.util.List
+import java.util.ArrayList
 import java.lang.Math
 import java.lang.Double
 import uk.ac.imperial.presage2.core.Action
@@ -49,6 +50,18 @@ declare LeaveCluster
 	@role( event )
 end
 
+declare CreateCluster
+	@role( event )
+end
+
+declare CheckEmptyCluster
+	@role( event )
+end
+
+declare LeftCluster
+	cluster: Cluster @key
+end
+	
 declare ProvisionPool
 	cluster: Cluster @key
 	quantity: double
@@ -231,8 +244,38 @@ rule "Leave cluster"
 	then
 		retract( $m );
 		insert( new Processed( $a ) );
-		logger.info("Left cluster: "+ $p );
+		insert( new LeftCluster( $c ) );
+		logger.info("Left cluster " +$c+ " : "+ $p );
 end
+
+rule "List Create cluster"
+	salience 100
+	when
+		$a : CreateCluster( $c : cluster )
+		$l : List(size > 0) from collect( $cc : CreateCluster( $cl: cluster ) )
+	then
+		CreateCluster cc = (CreateCluster) $l.get( Random.randomInt( $l.size() ) );
+		logger.info("Creating cluster: "+ cc.getCluster() + " with alloc " + cc.getCluster().getAllocationMethod() );	
+		insert(cc.getCluster());
+		ArrayList copiedList = new ArrayList( $l ); 
+		for(Object o: copiedList){
+			#logger.info("List retract " + o);
+			retract(o);
+		}
+end
+
+rule "Check empty cluster"
+	salience 10
+	when
+		$c : Cluster( )
+		not( exists( MemberOf( cluster == $c ) ) )
+		$l : LeftCluster( cluster == $c)
+	then
+		retract($c);
+		retract($l);
+		logger.info("Deleting cluster: "+ $c);
+end
+
 
 rule "Assign cluster head"
 	salience -1

@@ -84,6 +84,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 
 	@Parameter(name = "clusters")
 	public String clusters;
+	@Parameter(name = "dynamicClusters", optional = true)
+	public boolean dynamicClusters = false;
 
 	@Parameter(name = "alpha")
 	public double alpha;
@@ -133,6 +135,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 	 */
 	@Parameter(name = "reproductionInterval", optional = true)
 	public int reproductionInterval = 100;
+	@Parameter(name = "reproductionFactor", optional = true)
+	public double reproductionFactor = 0.5;
 
 	/**
 	 * With random reproduction, this is the probability of reproduction in a
@@ -224,7 +228,6 @@ public class LPGGameSimulation extends InjectedSimulation {
 	protected Cluster[] initClusters() {
 		String[] clusterNames = StringUtils.split(this.clusters, ',');
 		Cluster[] clusters = new Cluster[clusterNames.length];
-		int clusterCtr = 0;
 		for (int i = 0; i < clusterNames.length; i++) {
 			Allocation method = null;
 			for (Allocation a : Allocation.values()) {
@@ -236,7 +239,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			if (method == null)
 				throw new RuntimeException("Unknown allocation method '"
 						+ clusterNames[i] + "', could not create cluster!");
-			Cluster c = new Cluster(clusterCtr++, method);
+			Cluster c = new Cluster(this.game.getNextNumCluster(), method);
 			session.insert(c);
 			if (c.isLC()) {
 				LegitimateClaims lc = new LegitimateClaims(c, session,
@@ -274,6 +277,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 		LPGPlayer ag = new LPGPlayer(pid, name, pCheat, alpha, beta, cheatOn,
 				getClusterLeave(), getClusterSelect(), resetSatisfaction, size,
 				rnd.nextLong());
+		ag.permCreateCluster = this.dynamicClusters;
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
 		players.add(p);
@@ -320,8 +324,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 				for (Map.Entry<Cluster, List<LPGPlayer>> clEntry : clusterMembers
 						.entrySet()) {
 					List<LPGPlayer> members = clEntry.getValue();
-					int childCount = reproduction == Reproduction.PERIODIC ? members
-							.size() / 2 : 1;
+					int childCount = (int) (members.size() * reproductionFactor);
 					for (int i = 0; i < childCount; i++) {
 						conceivePlayer(clEntry.getKey(), members);
 					}
@@ -330,7 +333,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 			}
 			// generate new g and q
 			for (Player p : players) {
-				session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
+				if (game.getCluster(p.getId()) != null) {
+					session.insert(new Generate(p, game.getRoundNumber() + 1));
+				}
 			}
 		}
 		// analyse objects in working memory.

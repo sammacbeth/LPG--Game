@@ -2,8 +2,11 @@ package uk.ac.imperial.lpgdash;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
@@ -12,12 +15,16 @@ import org.apache.commons.math.stat.descriptive.DescriptiveStatistics;
 import org.apache.commons.math.stat.descriptive.SummaryStatistics;
 
 import uk.ac.imperial.lpgdash.actions.Appropriate;
+import uk.ac.imperial.lpgdash.actions.CreateCluster;
 import uk.ac.imperial.lpgdash.actions.Demand;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LeaveCluster;
 import uk.ac.imperial.lpgdash.actions.Provision;
+import uk.ac.imperial.lpgdash.allocators.LegitimateClaims;
+import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.util.BolzmannDistribution;
+import uk.ac.imperial.presage2.core.db.StorageService;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 import uk.ac.imperial.presage2.core.environment.ActionHandlingException;
 import uk.ac.imperial.presage2.core.environment.ParticipantSharedState;
@@ -49,6 +56,11 @@ public class LPGPlayer extends AbstractParticipant {
 	double alpha = .1;
 	double beta = .1;
 	double satisfaction = 0.5;
+	double tau = .1;
+
+	int numClustersCreated = 0;
+	int maxClustersCreated = 100;
+	int minWaitingAgents = 10;
 
 	Cheat cheatOn = Cheat.PROVISION;
 
@@ -56,6 +68,7 @@ public class LPGPlayer extends AbstractParticipant {
 	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
 	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
 	DescriptiveStatistics rollingUtility = new DescriptiveStatistics(100);
+	Set<Cluster> definitelyLeftClusters;
 
 	double size = 1;
 
@@ -67,6 +80,8 @@ public class LPGPlayer extends AbstractParticipant {
 	int clusterDissatisfactionCount = 0;
 	int leaveThreshold = 3;
 	boolean resetSatisfaction = false;
+	boolean permCreateCluster = false;
+	boolean dead = false;
 
 	public LPGPlayer(UUID id, String name) {
 		super(id, name);
@@ -78,6 +93,8 @@ public class LPGPlayer extends AbstractParticipant {
 		this.pCheat = pCheat;
 		this.alpha = alpha;
 		this.beta = beta;
+		clusterSatisfaction = new HashMap<Cluster, Double>();
+		definitelyLeftClusters = new HashSet<Cluster>();
 	}
 
 	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
@@ -123,16 +140,25 @@ public class LPGPlayer extends AbstractParticipant {
 		return ss;
 	}
 
+	@SuppressWarnings("deprecation")
 	@Override
 	public void execute() {
+		super.execute();
 		this.cluster = this.game.getCluster(getID());
 
-		if (this.cluster == null) {
+		if (dead)
 			return;
+
+		if (this.cluster == null && game.getRoundNumber() > 1) {
+			assessClusterMembership();
+			if (this.cluster == null && permCreateCluster && !dead)
+				assessClusterCreation();
+			if (game.getRound() == RoundType.APPROPRIATE)
+				return;
 		}
 
 		if (game.getRound() == RoundType.DEMAND) {
-			if (game.getRoundNumber() > 1) {
+			if (this.cluster != null && game.getRoundNumber() > 1) {
 				// determine utility gained from last round
 				calculateScores();
 			}
@@ -203,8 +229,12 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	protected void leaveCluster() {
+		if (this.cluster == null)
+			return;
 		try {
 			environment.act(new LeaveCluster(this.cluster), getID(), authkey);
+			if (clusterSatisfaction.get(this.cluster) < this.tau)
+				definitelyLeftClusters.add(this.cluster);
 			this.cluster = null;
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to leave cluster", e);
@@ -214,9 +244,40 @@ public class LPGPlayer extends AbstractParticipant {
 	protected void joinCluster(Cluster c) {
 		try {
 			environment.act(new JoinCluster(c), getID(), authkey);
+			this.cluster = c;
+			this.satisfaction = clusterSatisfaction.get(c);
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to join cluster", e);
 		}
+	}
+
+	protected Cluster createCluster() {
+		try {
+			Allocation[] methods = { Allocation.RANDOM, Allocation.QUEUE,
+					Allocation.LC_FIXED, Allocation.LC_SO };
+			int pick = rnd.nextInt(methods.length);
+			Allocation method = methods[pick];
+			Cluster newCluster = new Cluster(this.game.getNextNumCluster(),
+					method);
+			if (newCluster.isLC()) {
+				LegitimateClaims lc = new LegitimateClaims(newCluster,
+						this.game.session, this.game);
+				StorageService sto = (StorageService) this.game.session
+						.getGlobal("storage");
+				lc.setStorage(sto);
+				lc.setGamma(0.1);
+				lc.enableHack = true;
+				lc.soHd = true;
+				lc.rankMemory = 1;
+				this.game.session.insert(lc);
+			}
+			environment.act(new CreateCluster(newCluster), getID(), authkey);
+			numClustersCreated++;
+			return newCluster;
+		} catch (ActionHandlingException e) {
+			logger.warn("Failed to create cluster", e);
+		}
+		return null;
 	}
 
 	protected void calculateScores() {
@@ -265,16 +326,33 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	private void assessClusterMembership() {
-		// initialise/update cluster satisfaction
-		if (clusterSatisfaction.size() == 0) {
-			Set<Cluster> availableClusters = this.game.getClusters();
-			for (Cluster c : availableClusters) {
-				if (this.cluster.equals(c))
-					clusterSatisfaction.put(c, this.satisfaction);
-				else
-					clusterSatisfaction.put(c, 0.5);
+
+		// Update cluster satisfaction set (to account for newly created
+		// clusters)
+		Set<Cluster> availableClusters = this.game.getClusters();
+		logger.info("Avail cluster: " + availableClusters);
+		for (Cluster c : availableClusters) {
+			if (!clusterSatisfaction.containsKey(c)
+					&& !definitelyLeftClusters.contains(c)) {
+				clusterSatisfaction.put(c, 0.5);
 			}
-		} else {
+			if (definitelyLeftClusters.contains(c)) {
+				clusterSatisfaction.remove(c);
+			}
+		}
+
+		// Remove non existing clusters -- use iterator to avoid
+		// concurrentModificationException
+		Iterator<Entry<Cluster, Double>> it = clusterSatisfaction.entrySet()
+				.iterator();
+		while (it.hasNext()) {
+			Entry<Cluster, Double> entry = it.next();
+			if (!availableClusters.contains(entry.getKey())) {
+				it.remove();
+			}
+		}
+
+		if (this.cluster != null) {
 			clusterSatisfaction.put(this.cluster, this.satisfaction);
 		}
 
@@ -289,7 +367,7 @@ public class LPGPlayer extends AbstractParticipant {
 		// if satisfaction is below threshold or other cluster's satisfaction
 		// then increment consecutive dissatisfaction count, otherwise reset it
 		// to 0.
-		if (maxSatisfaction < 0.1 || !preferred.equals(this.cluster)) {
+		if (maxSatisfaction < this.tau || !preferred.equals(this.cluster)) {
 			this.clusterDissatisfactionCount++;
 		} else {
 			this.clusterDissatisfactionCount = 0;
@@ -350,6 +428,17 @@ public class LPGPlayer extends AbstractParticipant {
 						this.satisfaction = clusterSatisfaction.get(chosen);
 					}
 				}
+			}
+		}
+	}
+
+	private void assessClusterCreation() {
+		Set<UUID> op = this.game.getOrphanPlayers();
+		if (op.size() > this.minWaitingAgents) {
+			logger.info("More than " + this.minWaitingAgents
+					+ " orphans... why not create cluster?");
+			if (numClustersCreated < maxClustersCreated) {
+				createCluster();
 			}
 		}
 	}

@@ -2,3 +2,12 @@
 .project
 .settings
 target/
+
+*.py
+*.pyc
+*~
+out
+
+*.py
+
+*.properties

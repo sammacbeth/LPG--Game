@@ -5,6 +5,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
 
@@ -39,6 +40,7 @@ public class LPGService extends EnvironmentService {
 
 	RoundType round = RoundType.INIT;
 	int roundNumber = 0;
+	private int numClusters = 0;
 
 	@Inject
 	protected LPGService(EnvironmentSharedStateAccess sharedState,
@@ -130,7 +132,10 @@ public class LPGService extends EnvironmentService {
 	}
 
 	public Set<Cluster> getClusters() {
-		if (this.clusters.size() == 0) {
+		// If we allow for dynamic creation of clusters, we must check which ones exist every time
+		//if this.clusters.size() == 0) {
+		if (true){
+			this.clusters.clear();
 			Collection<Object> clusterSearch = session
 					.getObjects(new ObjectFilter() {
 
@@ -145,5 +150,23 @@ public class LPGService extends EnvironmentService {
 		}
 		return Collections.unmodifiableSet(this.clusters);
 	}
+	
+	public int getNumClusters(){
+		return getClusters().size();
+	}
+	
+	public int getNextNumCluster(){
+		return numClusters++;
+	}
 
+	public Set<UUID> getOrphanPlayers(){
+		Set<UUID> op = new HashSet<UUID>();
+		for (Entry<UUID, Player> p : this.players.entrySet()){
+			if (getCluster(p.getKey()) == null){
+				op.add(p.getKey());
+			}
+		}
+		return op;
+	}
+	
 }
