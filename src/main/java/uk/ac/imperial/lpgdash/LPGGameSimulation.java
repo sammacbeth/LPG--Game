@@ -15,7 +15,6 @@ import org.apache.log4j.Logger;
 import org.drools.runtime.StatefulKnowledgeSession;
 
 import uk.ac.imperial.lpgdash.LPGPlayer.ClusterLeaveAlgorithm;
-import uk.ac.imperial.lpgdash.LPGPlayer.ClusterSelectionAlgorithm;
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
@@ -106,8 +105,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 
 	@Parameter(name = "clusterLeave", optional = true)
 	public ClusterLeaveAlgorithm clusterLeave = ClusterLeaveAlgorithm.THRESHOLD;
-	@Parameter(name = "clusterSelect", optional = true)
-	public ClusterSelectionAlgorithm clusterSelect = ClusterSelectionAlgorithm.PREFERRED;
+	// @Parameter(name = "clusterSelect", optional = true)
+	// public ClusterSelectionAlgorithm clusterSelect =
+	// ClusterSelectionAlgorithm.PREFERRED;
 	@Parameter(name = "resetSatisfaction", optional = true)
 	public boolean resetSatisfaction = false;
 
@@ -275,8 +275,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			String type, Cheat cheatOn, Cluster cluster) {
 		UUID pid = UUID.randomUUID();
 		LPGPlayer ag = new LPGPlayer(pid, name, pCheat, alpha, beta, cheatOn,
-				getClusterLeave(), getClusterSelect(), resetSatisfaction, size,
-				rnd.nextLong());
+				getClusterLeave(), resetSatisfaction, size, rnd.nextLong());
 		ag.permCreateCluster = this.dynamicClusters;
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
@@ -290,10 +289,6 @@ public class LPGGameSimulation extends InjectedSimulation {
 
 	public ClusterLeaveAlgorithm getClusterLeave() {
 		return clusterLeave;
-	}
-
-	public ClusterSelectionAlgorithm getClusterSelect() {
-		return clusterSelect;
 	}
 
 	@EventListener
@@ -324,7 +319,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 				for (Map.Entry<Cluster, List<LPGPlayer>> clEntry : clusterMembers
 						.entrySet()) {
 					List<LPGPlayer> members = clEntry.getValue();
-					int childCount = (int) (members.size() * reproductionFactor);
+					int childCount = (int) Math.ceil(members.size() * reproductionFactor);
 					for (int i = 0; i < childCount; i++) {
 						conceivePlayer(clEntry.getKey(), members);
 					}
@@ -377,11 +372,13 @@ public class LPGGameSimulation extends InjectedSimulation {
 				}
 			}
 			// chose two random cluster members from the distribution
+			int loopBreak = 10;
 			LPGPlayer first = dist.keyAt(rnd.nextDouble());
 			LPGPlayer second;
 			do {
 				second = dist.keyAt(rnd.nextDouble());
-			} while (first == second);
+				loopBreak--;
+			} while (first == second && loopBreak > 0);
 			// determine offspring characteristics
 			double childPCheat = ((first.pCheat + second.pCheat) / 2);
 			Cheat childCheatOn = first.cheatOn;

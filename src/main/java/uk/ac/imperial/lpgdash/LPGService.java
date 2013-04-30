@@ -131,11 +131,9 @@ public class LPGService extends EnvironmentService {
 			return null;
 	}
 
-	public Set<Cluster> getClusters() {
+	public synchronized Set<Cluster> getClusters() {
 		// If we allow for dynamic creation of clusters, we must check which ones exist every time
-		//if this.clusters.size() == 0) {
-		if (true){
-			this.clusters.clear();
+		if (this.clusters.size() == 0) {
 			Collection<Object> clusterSearch = session
 					.getObjects(new ObjectFilter() {
 
@@ -156,6 +154,7 @@ public class LPGService extends EnvironmentService {
 	}
 	
 	public int getNextNumCluster(){
+		this.clusters.clear();
 		return numClusters++;
 	}
 

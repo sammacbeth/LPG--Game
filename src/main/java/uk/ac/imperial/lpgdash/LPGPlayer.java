@@ -1,10 +1,8 @@
 package uk.ac.imperial.lpgdash;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -23,7 +21,6 @@ import uk.ac.imperial.lpgdash.actions.Provision;
 import uk.ac.imperial.lpgdash.allocators.LegitimateClaims;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
-import uk.ac.imperial.lpgdash.util.BolzmannDistribution;
 import uk.ac.imperial.presage2.core.db.StorageService;
 import uk.ac.imperial.presage2.core.db.persistent.TransientAgentState;
 import uk.ac.imperial.presage2.core.environment.ActionHandlingException;
@@ -35,7 +32,7 @@ import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 public class LPGPlayer extends AbstractParticipant {
 
 	enum ClusterLeaveAlgorithm {
-		INSTANT, THRESHOLD, NEGATIVE_UTILITY
+		INSTANT, THRESHOLD, UTILITY
 	};
 
 	enum ClusterSelectionAlgorithm {
@@ -65,10 +62,9 @@ public class LPGPlayer extends AbstractParticipant {
 	Cheat cheatOn = Cheat.PROVISION;
 
 	Cluster cluster = null;
-	Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
 	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
 	DescriptiveStatistics rollingUtility = new DescriptiveStatistics(100);
-	Set<Cluster> definitelyLeftClusters;
+	SummaryStatistics overallUtility = new SummaryStatistics();
 
 	double size = 1;
 
@@ -76,9 +72,7 @@ public class LPGPlayer extends AbstractParticipant {
 	private Random rnd;
 
 	ClusterLeaveAlgorithm clusterLeave = ClusterLeaveAlgorithm.THRESHOLD;
-	ClusterSelectionAlgorithm clusterSelection = ClusterSelectionAlgorithm.BOLTZMANN;
-	int clusterDissatisfactionCount = 0;
-	int leaveThreshold = 3;
+	ClusterSelect clusterSelection;
 	boolean resetSatisfaction = false;
 	boolean permCreateCluster = false;
 	boolean dead = false;
@@ -93,21 +87,27 @@ public class LPGPlayer extends AbstractParticipant {
 		this.pCheat = pCheat;
 		this.alpha = alpha;
 		this.beta = beta;
-		clusterSatisfaction = new HashMap<Cluster, Double>();
-		definitelyLeftClusters = new HashSet<Cluster>();
 	}
 
 	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
 			double beta, Cheat cheatOn, ClusterLeaveAlgorithm clLeave,
-			ClusterSelectionAlgorithm clSel, boolean resetSatisfaction,
-			double size, long rndSeed) {
+			boolean resetSatisfaction, double size, long rndSeed) {
 		this(id, name, pCheat, alpha, beta);
 		this.cheatOn = cheatOn;
-		this.clusterLeave = clLeave;
-		this.clusterSelection = clSel;
 		this.resetSatisfaction = resetSatisfaction;
 		this.size = size;
 		this.rnd = new Random(rndSeed);
+		this.clusterLeave = clLeave;
+		int leaveThreshold = 3;
+		switch (clLeave) {
+		case INSTANT:
+			leaveThreshold = 1;
+		case THRESHOLD:
+			this.clusterSelection = new SatisfiedClustering(leaveThreshold);
+			break;
+		case UTILITY:
+			this.clusterSelection = new UtilityClustering();
+		}
 	}
 
 	@Override
@@ -149,12 +149,12 @@ public class LPGPlayer extends AbstractParticipant {
 		if (dead)
 			return;
 
-		if (this.cluster == null && game.getRoundNumber() > 1) {
-			assessClusterMembership();
-			if (this.cluster == null && permCreateCluster && !dead)
+		if (!dead && permCreateCluster && this.cluster == null
+				&& game.getRoundNumber() > 1
+				&& game.getRound() == RoundType.DEMAND) {
+			clusterSelection.assessClusters();
+			if (this.cluster == null)
 				assessClusterCreation();
-			if (game.getRound() == RoundType.APPROPRIATE)
-				return;
 		}
 
 		if (game.getRound() == RoundType.DEMAND) {
@@ -164,7 +164,7 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 			if (!(clusterLeave == ClusterLeaveAlgorithm.INSTANT)
 					|| game.getRoundNumber() % 20 == 0) {
-				assessClusterMembership();
+				clusterSelection.assessClusters();
 				if (this.cluster == null) {
 					return;
 				}
@@ -233,8 +233,6 @@ public class LPGPlayer extends AbstractParticipant {
 			return;
 		try {
 			environment.act(new LeaveCluster(this.cluster), getID(), authkey);
-			if (clusterSatisfaction.get(this.cluster) < this.tau)
-				definitelyLeftClusters.add(this.cluster);
 			this.cluster = null;
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to leave cluster", e);
@@ -245,7 +243,6 @@ public class LPGPlayer extends AbstractParticipant {
 		try {
 			environment.act(new JoinCluster(c), getID(), authkey);
 			this.cluster = c;
-			this.satisfaction = clusterSatisfaction.get(c);
 		} catch (ActionHandlingException e) {
 			logger.warn("Failed to join cluster", e);
 		}
@@ -314,122 +311,13 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("cluster", Integer.toString(this.cluster.getId()));
 		}
 
-		// initialise/update cluster utilities
-		if (clusterUtilities.size() == 0) {
-			Set<Cluster> availableClusters = this.game.getClusters();
-			for (Cluster c : availableClusters) {
-				clusterUtilities.put(c, new SummaryStatistics());
-			}
+		if (!clusterUtilities.containsKey(this.cluster)) {
+			SummaryStatistics s = new SummaryStatistics();
+			clusterUtilities.put(cluster, s);
 		}
 		clusterUtilities.get(this.cluster).addValue(u);
 		rollingUtility.addValue(u);
-	}
-
-	private void assessClusterMembership() {
-
-		// Update cluster satisfaction set (to account for newly created
-		// clusters)
-		Set<Cluster> availableClusters = this.game.getClusters();
-		logger.info("Avail cluster: " + availableClusters);
-		for (Cluster c : availableClusters) {
-			if (!clusterSatisfaction.containsKey(c)
-					&& !definitelyLeftClusters.contains(c)) {
-				clusterSatisfaction.put(c, 0.5);
-			}
-			if (definitelyLeftClusters.contains(c)) {
-				clusterSatisfaction.remove(c);
-			}
-		}
-
-		// Remove non existing clusters -- use iterator to avoid
-		// concurrentModificationException
-		Iterator<Entry<Cluster, Double>> it = clusterSatisfaction.entrySet()
-				.iterator();
-		while (it.hasNext()) {
-			Entry<Cluster, Double> entry = it.next();
-			if (!availableClusters.contains(entry.getKey())) {
-				it.remove();
-			}
-		}
-
-		if (this.cluster != null) {
-			clusterSatisfaction.put(this.cluster, this.satisfaction);
-		}
-
-		Cluster preferred = this.cluster;
-		double maxSatisfaction = this.satisfaction;
-		for (Map.Entry<Cluster, Double> e : clusterSatisfaction.entrySet()) {
-			if (e.getValue() > maxSatisfaction) {
-				maxSatisfaction = e.getValue();
-				preferred = e.getKey();
-			}
-		}
-		// if satisfaction is below threshold or other cluster's satisfaction
-		// then increment consecutive dissatisfaction count, otherwise reset it
-		// to 0.
-		if (maxSatisfaction < this.tau || !preferred.equals(this.cluster)) {
-			this.clusterDissatisfactionCount++;
-		} else {
-			this.clusterDissatisfactionCount = 0;
-		}
-		// if we are dissatisfied for greater than the leave threshold, leave or
-		// change cluster.
-		boolean leaveCluster;
-		switch (clusterLeave) {
-		case INSTANT:
-			leaveCluster = (this.satisfaction < 0.1);
-			break;
-		case NEGATIVE_UTILITY:
-			leaveCluster = rollingUtility.getN() > 50
-					&& rollingUtility.getSum() < 0;
-			break;
-		case THRESHOLD:
-		default:
-			leaveCluster = this.clusterDissatisfactionCount >= this.leaveThreshold;
-		}
-		if (leaveCluster) {
-			if (clusterSelection == ClusterSelectionAlgorithm.PREFERRED) {
-				if (!preferred.equals(this.cluster)) {
-					leaveCluster();
-					joinCluster(preferred);
-					this.cluster = preferred;
-					this.satisfaction = clusterSatisfaction.get(preferred);
-				} else {
-					leaveCluster();
-					this.cluster = null;
-				}
-			} else if (clusterSelection == ClusterSelectionAlgorithm.BOLTZMANN) {
-				BolzmannDistribution<Cluster> b = new BolzmannDistribution<Cluster>();
-				// find clusters with no recorded utilities
-				List<Cluster> unknownClusters = new ArrayList<Cluster>();
-				for (Map.Entry<Cluster, SummaryStatistics> e : clusterUtilities
-						.entrySet()) {
-					if (e.getValue().getN() == 0)
-						unknownClusters.add(e.getKey());
-					else
-						b.addValue(e.getKey(), e.getValue().getMean());
-				}
-
-				// join random unknown cluster
-				if (unknownClusters.size() > 0) {
-					leaveCluster();
-					logger.info("Chose unknown by random.");
-					joinCluster(unknownClusters.get(rnd.nextInt(unknownClusters
-							.size())));
-				} else {
-					Cluster chosen = b.choose();
-					logger.info("Chose " + chosen + " by Boltzmann dist.");
-					if (chosen != this.cluster) {
-						leaveCluster();
-						joinCluster(chosen);
-						if (resetSatisfaction) {
-							clusterSatisfaction.put(chosen, 0.5);
-						}
-						this.satisfaction = clusterSatisfaction.get(chosen);
-					}
-				}
-			}
-		}
+		overallUtility.addValue(u);
 	}
 
 	private void assessClusterCreation() {
@@ -441,5 +329,164 @@ public class LPGPlayer extends AbstractParticipant {
 				createCluster();
 			}
 		}
+	}
+
+	interface ClusterSelect {
+		void assessClusters();
+	}
+
+	class SatisfiedClustering implements ClusterSelect {
+		int dissatisfactionCount = 0;
+		int leaveThreshold = 3;
+		Map<Cluster, Double> clusterSatisfaction = new HashMap<Cluster, Double>();
+		Set<Cluster> definitelyLeftClusters = new HashSet<Cluster>();
+
+		SatisfiedClustering() {
+			super();
+		}
+
+		SatisfiedClustering(int leaveThreshold) {
+			super();
+			this.leaveThreshold = leaveThreshold;
+		}
+
+		public void assessClusters() {
+			// Add new available clusters
+			Set<Cluster> availableClusters = game.getClusters();
+			// logger.info("Avail cluster: " + availableClusters);
+			for (Cluster c : availableClusters) {
+				if (!clusterSatisfaction.containsKey(c)
+						&& !definitelyLeftClusters.contains(c)) {
+					clusterSatisfaction.put(c, 0.5);
+				}
+				if (definitelyLeftClusters.contains(c)) {
+					clusterSatisfaction.remove(c);
+				}
+			}
+			// Remove non existing clusters -- use iterator to avoid
+			// concurrentModificationException
+			Iterator<Entry<Cluster, Double>> it = clusterSatisfaction
+					.entrySet().iterator();
+			while (it.hasNext()) {
+				Entry<Cluster, Double> entry = it.next();
+				if (!availableClusters.contains(entry.getKey())) {
+					it.remove();
+				}
+			}
+			if (cluster != null) {
+				clusterSatisfaction.put(cluster, satisfaction);
+			}
+
+			Cluster preferred = preferredCluster();
+			if (preferred == null)
+				return;
+			double maxSatisfaction = clusterSatisfaction.get(preferred);
+			// if satisfaction is below threshold or other cluster's
+			// satisfaction then increment consecutive dissatisfaction count,
+			// otherwise reset it to 0.
+			if (maxSatisfaction < tau || !preferred.equals(cluster)) {
+				this.dissatisfactionCount++;
+			} else {
+				this.dissatisfactionCount = 0;
+			}
+
+			boolean leaveCluster = this.dissatisfactionCount >= this.leaveThreshold;
+			if (leaveCluster) {
+				definitelyLeftClusters.add(cluster);
+				if (cluster == null) {
+					joinCluster(preferred);
+					cluster = preferred;
+					satisfaction = clusterSatisfaction.get(cluster);
+				} else if (!preferred.equals(cluster)) {
+					leaveCluster();
+					joinCluster(preferred);
+					cluster = preferred;
+					satisfaction = clusterSatisfaction.get(cluster);
+				} else {
+					leaveCluster();
+					cluster = null;
+				}
+			}
+		}
+
+		Cluster preferredCluster() {
+			Cluster preferred = cluster;
+			double maxSatisfaction = satisfaction;
+			for (Map.Entry<Cluster, Double> e : clusterSatisfaction.entrySet()) {
+				if (e.getValue() > maxSatisfaction) {
+					maxSatisfaction = e.getValue();
+					preferred = e.getKey();
+				}
+			}
+			return preferred;
+		}
+
+	}
+
+	class UtilityClustering implements ClusterSelect {
+		double deathThreshold = -100;
+		double leaveThreshold = -20;
+		Set<Cluster> definitelyLeftClusters = new HashSet<Cluster>();
+
+		@Override
+		public void assessClusters() {
+			// death
+			if (overallUtility.getSum() < deathThreshold) {
+				if (cluster != null)
+					leaveCluster();
+				dead = true;
+				return;
+			}
+			checkNewClusters();
+
+			// find preferred cluster
+			Cluster preferred = cluster;
+			double maxUtility = clusterUtilities.containsKey(preferred) ? clusterUtilities
+					.get(cluster).getSum() : deathThreshold;
+			for (Entry<Cluster, SummaryStatistics> e : clusterUtilities
+					.entrySet()) {
+				if (e.getValue().getSum() > maxUtility + 5) {
+					maxUtility = e.getValue().getSum();
+					preferred = e.getKey();
+				}
+			}
+
+			if (preferred == null) {
+				return;
+			}
+			if (!preferred.equals(cluster) && maxUtility > leaveThreshold) {
+				leaveCluster();
+				joinCluster(preferred);
+				cluster = preferred;
+			} else if (overallUtility.getN() > 10
+					&& maxUtility < leaveThreshold && cluster != null) {
+				leaveCluster();
+			}
+		}
+
+		private void checkNewClusters() {
+			// initialise/update cluster utilities
+			// Add new available clusters
+			Set<Cluster> availableClusters = game.getClusters();
+			// logger.info("Avail cluster: " + availableClusters);
+			for (Cluster c : availableClusters) {
+				if (!clusterUtilities.containsKey(c)) {
+					SummaryStatistics s = new SummaryStatistics();
+					s.addValue(0);
+					clusterUtilities.put(c, s);
+				}
+			}
+			// Remove non existing clusters -- use iterator to avoid
+			// concurrentModificationException
+			Iterator<Entry<Cluster, SummaryStatistics>> it = clusterUtilities
+					.entrySet().iterator();
+			while (it.hasNext()) {
+				Entry<Cluster, SummaryStatistics> entry = it.next();
+				if (!availableClusters.contains(entry.getKey())) {
+					it.remove();
+				}
+			}
+		}
+
 	}
 }
