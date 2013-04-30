@@ -144,7 +144,6 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 	protected Cluster[] initClusters() {
 		String[] clusterNames = StringUtils.split(this.clusters, ',');
 		Cluster[] clusters = new Cluster[clusterNames.length];
-		int clusterCtr = 0;
 		for (int i = 0; i < clusterNames.length; i++) {
 			Allocation method = null;
 			for (Allocation a : Allocation.values()) {
@@ -156,7 +155,7 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 			if (method == null)
 				throw new RuntimeException("Unknown allocation method '"
 						+ clusterNames[i] + "', could not create cluster!");
-			Cluster c = new Cluster(clusterCtr++, method);
+			Cluster c = new Cluster(this.game.getNextNumCluster(), method);
 			session.insert(c);
 			if (c.isLC()) {
 				LegitimateClaims lc = new LegitimateClaims(c, session,
@@ -190,7 +189,9 @@ public class LPGGameSimulation extends InjectedSimulation implements TimeDriven 
 		if (this.game.getRound() == RoundType.APPROPRIATE) {
 			// generate new g and q
 			for (Player p : players) {
-				session.insert(new Generate(p, game.getRoundNumber() + 1));
+				if (game.getCluster(p.getId())!=null){
+					session.insert(new Generate(p, game.getRoundNumber() + 1));
+				}
 			}
 		}
 		// analyse objects in working memory.

@@ -20,7 +20,7 @@ rule "Random resource allocation"
 		$pool : ProvisionPool( cluster == $c )
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 	then
-		logger.info("Random order for resources " + $c);
+		logger.info("Random order allocation for resources " + $c);
 		RandomAllocator.allocate(session, $poolMembers, $pool.getQuantity(), $t );
 		modify( $pool ) {
 			setQuantity(0);

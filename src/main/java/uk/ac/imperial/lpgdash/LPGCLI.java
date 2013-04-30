@@ -65,6 +65,9 @@ public class LPGCLI extends Presage2CLI {
 		experiments
 				.put("multi_cluster",
 						"Multi-cluster scenario with lc_so and random allocations over beta {0.1,0.4}");
+		experiments
+		.put("multi_cluster_create",
+				"Multi-cluster scenario allowing creation of new clusters with initially lc_so and random allocations over beta {0.4}");
 		experiments.put("memory", "Increasing agent memory sizes");
 		experiments.put("hack", "Check hacks.");
 		experiments.put("large_pop", "Large population.");
@@ -128,6 +131,8 @@ public class LPGCLI extends Presage2CLI {
 			het_hom(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("multi_cluster")) {
 			multi_cluster(repeats, seed);
+		} else if (args[1].equalsIgnoreCase("multi_cluster_create")) {
+			multi_cluster_create(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("memory")) {
 			memory(repeats, seed);
 		} else if (args[1].equalsIgnoreCase("hack")) {
@@ -221,7 +226,7 @@ public class LPGCLI extends Presage2CLI {
 	}
 
 	void multi_cluster(int repeats, int seed) {
-		int rounds = 1000;
+		int rounds = 2000;
 		double[] betas = { 0.1, 0.4 };
 		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM;
 		for (int i = 0; i < repeats; i++) {
@@ -248,6 +253,34 @@ public class LPGCLI extends Presage2CLI {
 		stopDatabase();
 	}
 
+	void multi_cluster_create(int repeats, int seed) {
+		int rounds = 4000;
+		double[] betas = { 0.4 };
+		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM;
+		for (int i = 0; i < repeats; i++) {
+			for (double beta : betas) {
+				PersistentSimulation sim = getDatabase().createSimulation(
+						cluster + "_b=" + beta,
+						"uk.ac.imperial.lpgdash.LPGGameSimulation",
+						"AUTO START", rounds);
+
+				sim.addParameter("finishTime", Integer.toString(rounds));
+				sim.addParameter("alpha", Double.toString(0.1));
+				sim.addParameter("beta", Double.toString(beta));
+				sim.addParameter("gamma", Double.toString(0.1));
+				sim.addParameter("cCount", Integer.toString(20));
+				sim.addParameter("cPCheat", Double.toString(0.02));
+				sim.addParameter("ncCount", Integer.toString(20));
+				sim.addParameter("ncPCheat", Double.toString(0.25));
+				sim.addParameter("seed", Integer.toString(seed + i));
+				sim.addParameter("soHack", Boolean.toString(true));
+				sim.addParameter("clusters", cluster);
+				sim.addParameter("cheatOn", Cheat.PROVISION.name());
+			}
+		}
+		stopDatabase();
+	}
+	
 	void memory(int repeats, int seed) {
 		int rounds = 2002;
 		for (int i = 0; i < repeats; i++) {

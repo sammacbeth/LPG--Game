@@ -12,6 +12,7 @@ import java.util.Properties;
 import java.util.Set;
 
 import uk.ac.imperial.lpgdash.LPGService;
+import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.presage2.core.environment.EnvironmentServiceProvider;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.db.sql.Agent;
@@ -132,6 +133,14 @@ public class LPGDashStorage extends SqlStorage {
 							+ "PRIMARY KEY (`ID`, `cluster`),"
 							+ "KEY `Name` (`Name`),"
 							+ "FOREIGN KEY (`ID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
+			createTables
+			.execute("CREATE TABLE IF NOT EXISTS `clusters` ("
+					+ "`simID` bigint(20) NOT NULL,"
+					+ "`cluster` int(11) NOT NULL,"
+					+ "`method` varchar(255) NOT NULL,"
+					+ "`created` int(11) NOT NULL,"
+					+ "PRIMARY KEY (`simID`, `cluster`),"
+					+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 
 		} catch (SQLException e) {
 			logger.warn("", e);
@@ -149,6 +158,7 @@ public class LPGDashStorage extends SqlStorage {
 	@Override
 	protected synchronized void updateTransientEnvironment() {
 		PreparedStatement insertRound = null;
+		PreparedStatement insertCluster = null;
 
 		try {
 			insertRound = conn
@@ -201,6 +211,37 @@ public class LPGDashStorage extends SqlStorage {
 			environmentTransientQ.clear();
 			environmentTransientQ.addAll(notfullyProcessed);
 			batchQueryQ.put(insertRound);
+		} catch (SQLException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		} catch (InterruptedException e1) {
+			e1.printStackTrace();
+		}
+		
+		/* Insert cluster information */
+		try {
+			insertCluster = conn
+					.prepareStatement("INSERT IGNORE INTO clusters "
+							+ "(simID, cluster, method, created) "
+							+ "VALUES (?, ?, ?, ?) ");
+		} catch (SQLException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		}
+		
+		try {
+			for (Cluster c : this.game.getClusters()){
+				
+				insertCluster.setLong(1, this.simId);
+				insertCluster.setInt(2, c.getId());
+				insertCluster.setString(3, c.getAllocationMethod().toString());
+				insertCluster.setInt(4, this.game.getRoundNumber());
+	
+				insertCluster.addBatch();
+			}
+			
+			batchQueryQ.put(insertCluster);
+			
 		} catch (SQLException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);
