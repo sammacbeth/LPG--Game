@@ -1,7 +1,8 @@
 package uk.ac.imperial.lpgdash.actions;
 
+import java.util.Random;
+
 import uk.ac.imperial.lpgdash.facts.Player;
-import uk.ac.imperial.presage2.core.util.random.Random;
 
 public class Generate extends TimestampedAction {
 
@@ -9,11 +10,22 @@ public class Generate extends TimestampedAction {
 	public final double g;
 	public final double q;
 
+	public Generate(Player player, int time, Random rnd) {
+		super(time);
+		this.player = player;
+		this.g = rnd.nextDouble() * player.getSizeMultiplier();
+		this.q = this.g
+				+ (rnd.nextDouble() * (player.getSizeMultiplier() - this.g));
+	}
+
 	public Generate(Player player, int time) {
 		super(time);
 		this.player = player;
-		this.g = Random.randomDouble() * player.getSizeMultiplier();
-		this.q = this.g + (Random.randomDouble() * (player.getSizeMultiplier() - this.g));
+		this.g = uk.ac.imperial.presage2.core.util.random.Random.randomDouble()
+				* player.getSizeMultiplier();
+		this.q = this.g
+				+ (uk.ac.imperial.presage2.core.util.random.Random
+						.randomDouble() * (player.getSizeMultiplier() - this.g));
 	}
 
 	public Player getPlayer() {
@@ -30,8 +42,8 @@ public class Generate extends TimestampedAction {
 
 	@Override
 	public String toString() {
-		return "Generate [player=" + player.getName() + ", g=" + g + ", q=" + q + ", t="
-				+ t + "]";
+		return "Generate [player=" + player.getName() + ", g=" + g + ", q=" + q
+				+ ", t=" + t + "]";
 	}
 
 }

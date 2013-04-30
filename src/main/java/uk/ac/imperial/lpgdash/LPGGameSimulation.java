@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,6 +21,7 @@ import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.LPGActionHandler;
 import uk.ac.imperial.lpgdash.allocators.LegitimateClaims;
 import uk.ac.imperial.lpgdash.allocators.QueueAllocator;
+import uk.ac.imperial.lpgdash.allocators.RandomAllocator;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -33,7 +35,6 @@ import uk.ac.imperial.presage2.core.simulator.InjectedSimulation;
 import uk.ac.imperial.presage2.core.simulator.Parameter;
 import uk.ac.imperial.presage2.core.simulator.ParticipantsComplete;
 import uk.ac.imperial.presage2.core.simulator.Scenario;
-import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.rules.RuleModule;
 import uk.ac.imperial.presage2.rules.RuleStorage;
 import uk.ac.imperial.presage2.rules.facts.SimParticipantsTranslator;
@@ -52,6 +53,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 	private Set<Player> players = new HashSet<Player>();
 	private LPGService game;
 	private Scenario scenario;
+	private Random rnd;
 
 	protected int playerCtr = 0;
 	protected int genCtr = 0;
@@ -182,7 +184,10 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Override
 	protected void addToScenario(Scenario s) {
 		this.scenario = s;
-		Random.seed = this.seed;
+		// set up rng
+		this.rnd = new Random(this.seed);
+		RandomAllocator.rnd = new Random(rnd.nextLong());
+
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.storage);
@@ -193,9 +198,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 			// populations of random strategy agents
 			DecimalFormat format = new DecimalFormat("0000");
 			for (int n = 0; n < cCount + ncCount; n++) {
-				createPlayer(format.format(n) + "gen0",
-						0.4 * Random.randomDouble(), cSize, "0", getCheatOn(),
-						clusterArr[n % clusterArr.length]);
+				createPlayer(format.format(n) + "gen0", 0.4 * rnd.nextDouble(),
+						cSize, "0", getCheatOn(), clusterArr[n
+								% clusterArr.length]);
 			}
 		} else {
 			for (int n = 0; n < cCount; n++) {
@@ -212,7 +217,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			}
 		}
 		for (Player p : players) {
-			session.insert(new Generate(p, game.getRoundNumber() + 1));
+			session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
 		}
 	}
 
@@ -258,16 +263,17 @@ public class LPGGameSimulation extends InjectedSimulation {
 			}
 		}
 		Cheat[] cs = Cheat.values();
-		Cheat c = cs[Random.randomInt(cs.length)];
+		Cheat c = cs[rnd.nextInt(cs.length)];
 		logger.debug("Cheat on: " + c);
 		return c;
 	}
 
 	protected LPGPlayer createPlayer(String name, double pCheat, double size,
 			String type, Cheat cheatOn, Cluster cluster) {
-		UUID pid = Random.randomUUID();
+		UUID pid = UUID.randomUUID();
 		LPGPlayer ag = new LPGPlayer(pid, name, pCheat, alpha, beta, cheatOn,
-				getClusterLeave(), getClusterSelect(), resetSatisfaction, size);
+				getClusterLeave(), getClusterSelect(), resetSatisfaction, size,
+				rnd.nextLong());
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
 		players.add(p);
@@ -295,7 +301,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 					&& game.getRoundNumber() % reproductionInterval == 0 && game
 					.getRoundNumber() > 0)
 					|| reproduction == Reproduction.RANDOM
-					&& Random.randomDouble() < pReproduce) {
+					&& rnd.nextDouble() < pReproduce) {
 				genCtr++;
 				// collect players in each cluster
 				Map<Cluster, List<LPGPlayer>> clusterMembers = new HashMap<Cluster, List<LPGPlayer>>();
@@ -324,7 +330,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			}
 			// generate new g and q
 			for (Player p : players) {
-				session.insert(new Generate(p, game.getRoundNumber() + 1));
+				session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
 			}
 		}
 		// analyse objects in working memory.
@@ -366,17 +372,17 @@ public class LPGGameSimulation extends InjectedSimulation {
 				}
 			}
 			// chose two random cluster members from the distribution
-			LPGPlayer first = dist.choose();
+			LPGPlayer first = dist.keyAt(rnd.nextDouble());
 			LPGPlayer second;
 			do {
-				second = dist.choose();
+				second = dist.keyAt(rnd.nextDouble());
 			} while (first == second);
 			// determine offspring characteristics
 			double childPCheat = ((first.pCheat + second.pCheat) / 2);
 			Cheat childCheatOn = first.cheatOn;
 			double childSize = ((first.pCheat + second.pCheat) / 2);
 			// mutation
-			childPCheat += (0.1 * Random.randomDouble()) - 0.05;
+			childPCheat += (0.1 * rnd.nextDouble()) - 0.05;
 			childPCheat = Math.max(0.0, childPCheat);
 			childPCheat = Math.min(1.0, childPCheat);
 			DecimalFormat format = new DecimalFormat("0000");

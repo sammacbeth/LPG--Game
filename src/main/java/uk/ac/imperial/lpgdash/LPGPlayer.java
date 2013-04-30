@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,7 +23,6 @@ import uk.ac.imperial.presage2.core.environment.ActionHandlingException;
 import uk.ac.imperial.presage2.core.environment.ParticipantSharedState;
 import uk.ac.imperial.presage2.core.environment.UnavailableServiceException;
 import uk.ac.imperial.presage2.core.messaging.Input;
-import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 
 public class LPGPlayer extends AbstractParticipant {
@@ -60,6 +60,7 @@ public class LPGPlayer extends AbstractParticipant {
 	double size = 1;
 
 	protected LPGService game;
+	private Random rnd;
 
 	ClusterLeaveAlgorithm clusterLeave = ClusterLeaveAlgorithm.THRESHOLD;
 	ClusterSelectionAlgorithm clusterSelection = ClusterSelectionAlgorithm.BOLTZMANN;
@@ -82,13 +83,14 @@ public class LPGPlayer extends AbstractParticipant {
 	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
 			double beta, Cheat cheatOn, ClusterLeaveAlgorithm clLeave,
 			ClusterSelectionAlgorithm clSel, boolean resetSatisfaction,
-			double size) {
+			double size, long rndSeed) {
 		this(id, name, pCheat, alpha, beta);
 		this.cheatOn = cheatOn;
 		this.clusterLeave = clLeave;
 		this.clusterSelection = clSel;
 		this.resetSatisfaction = resetSatisfaction;
 		this.size = size;
+		this.rnd = new Random(rndSeed);
 	}
 
 	@Override
@@ -146,17 +148,17 @@ public class LPGPlayer extends AbstractParticipant {
 			q = game.getQ(getID());
 
 			if ((this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)
-					&& Random.randomDouble() < pCheat) {
+					&& rnd.nextDouble() < pCheat) {
 				switch (this.cheatOn) {
 				case PROVISION:
 				default:
 					// cheat: provision less than g
-					provision(g * Random.randomDouble());
+					provision(g * rnd.nextDouble());
 					demand(q);
 					break;
 				case DEMAND:
 					provision(g);
-					demand(q + Random.randomDouble() * (1 - q));
+					demand(q + rnd.nextDouble() * (1 - q));
 					break;
 				}
 			} else {
@@ -165,10 +167,9 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
-			if (this.cheatOn == Cheat.APPROPRIATE
-					&& Random.randomDouble() < pCheat) {
+			if (this.cheatOn == Cheat.APPROPRIATE && rnd.nextDouble() < pCheat) {
 				double allocated = game.getAllocated(getID());
-				appropriate(allocated + Random.randomDouble() * (1 - allocated));
+				appropriate(allocated + rnd.nextDouble() * (1 - allocated));
 			} else {
 				appropriate(game.getAllocated(getID()));
 			}
@@ -335,8 +336,8 @@ public class LPGPlayer extends AbstractParticipant {
 				if (unknownClusters.size() > 0) {
 					leaveCluster();
 					logger.info("Chose unknown by random.");
-					joinCluster(unknownClusters.get(Random
-							.randomInt(unknownClusters.size())));
+					joinCluster(unknownClusters.get(rnd.nextInt(unknownClusters
+							.size())));
 				} else {
 					Cluster chosen = b.choose();
 					logger.info("Chose " + chosen + " by Boltzmann dist.");
