@@ -256,7 +256,7 @@ public class LPGCLI extends Presage2CLI {
 	void multi_cluster_create(int repeats, int seed) {
 		int rounds = 4000;
 		double[] betas = { 0.4 };
-		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM;
+		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM + "," + Allocation.RATION;
 		for (int i = 0; i < repeats; i++) {
 			for (double beta : betas) {
 				PersistentSimulation sim = getDatabase().createSimulation(

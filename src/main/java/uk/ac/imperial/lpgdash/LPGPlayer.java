@@ -338,7 +338,7 @@ public class LPGPlayer extends AbstractParticipant {
 	
 	private void assessClusterCreation() {
 		Set<UUID> op = this.game.getOrphanPlayers();
-		if (op.size()>this.minWaitingAgents){
+		if (op.size()>=this.minWaitingAgents){
 			logger.info("More than "+this.minWaitingAgents+" orphans... why not create cluster?");
 			if (numClustersCreated<maxClustersCreated){
 				createCluster();
