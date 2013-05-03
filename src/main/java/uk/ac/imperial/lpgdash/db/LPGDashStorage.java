@@ -29,6 +29,7 @@ public class LPGDashStorage extends SqlStorage {
 	boolean shutdown = false;
 
 	protected LPGService game = null;
+	protected Set<Cluster> added = new HashSet<Cluster>();
 
 	@Inject
 	public LPGDashStorage(@Named(value = "sql.info") Properties jdbcInfo) {
@@ -140,13 +141,13 @@ public class LPGDashStorage extends SqlStorage {
 					+ "`cheatOn` char(1) NOT NULL,"
 					+ "PRIMARY KEY (`simID`,`name`))");
 			createTables
-			.execute("CREATE TABLE IF NOT EXISTS `clusters` ("
-					+ "`simID` bigint(20) NOT NULL,"
-					+ "`cluster` int(11) NOT NULL,"
-					+ "`method` varchar(255) NOT NULL,"
-					+ "`created` int(11) NOT NULL,"
-					+ "PRIMARY KEY (`simID`, `cluster`),"
-					+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
+					.execute("CREATE TABLE IF NOT EXISTS `clusters` ("
+							+ "`simID` bigint(20) NOT NULL,"
+							+ "`cluster` int(11) NOT NULL,"
+							+ "`method` varchar(255) NOT NULL,"
+							+ "`created` int(11) NOT NULL,"
+							+ "PRIMARY KEY (`simID`, `cluster`),"
+							+ "FOREIGN KEY (`simID`) REFERENCES `simulations` (`ID`) ON DELETE CASCADE );");
 		} catch (SQLException e) {
 			logger.warn("", e);
 			throw new RuntimeException(e);
@@ -222,7 +223,7 @@ public class LPGDashStorage extends SqlStorage {
 		} catch (InterruptedException e1) {
 			e1.printStackTrace();
 		}
-		
+
 		/* Insert cluster information */
 		try {
 			insertCluster = conn
@@ -233,20 +234,20 @@ public class LPGDashStorage extends SqlStorage {
 			logger.warn(e);
 			throw new RuntimeException(e);
 		}
-		
+
 		try {
-			for (Cluster c : this.game.getClusters()){
-				
+			for (Cluster c : this.game.getClusters()) {
+
 				insertCluster.setLong(1, this.simId);
 				insertCluster.setInt(2, c.getId());
 				insertCluster.setString(3, c.getAllocationMethod().toString());
 				insertCluster.setInt(4, this.game.getRoundNumber());
-	
+
 				insertCluster.addBatch();
 			}
-			
+
 			batchQueryQ.put(insertCluster);
-			
+
 		} catch (SQLException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);

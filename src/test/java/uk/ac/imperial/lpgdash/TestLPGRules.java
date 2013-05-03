@@ -22,6 +22,7 @@ import uk.ac.imperial.lpgdash.actions.Demand;
 import uk.ac.imperial.lpgdash.actions.Generate;
 import uk.ac.imperial.lpgdash.actions.JoinCluster;
 import uk.ac.imperial.lpgdash.actions.Provision;
+import uk.ac.imperial.lpgdash.allocators.RandomAllocator;
 import uk.ac.imperial.lpgdash.facts.Allocation;
 import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.lpgdash.facts.Player;
@@ -143,6 +144,7 @@ public class TestLPGRules {
 	public void testRandomSingleCluster() {
 		SimulatedGame game = new SimulatedGame();
 
+		RandomAllocator.rnd = new java.util.Random();
 		game.addCluster(Allocation.RANDOM);
 		int agents = Random.randomInt(30);
 		char name = 'a';

@@ -10,9 +10,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
-import java.util.Timer;
-import java.util.TimerTask;
 
+import uk.ac.imperial.lpgdash.facts.Cluster;
 import uk.ac.imperial.presage2.core.util.random.Random;
 import uk.ac.imperial.presage2.db.sql.Agent;
 import uk.ac.imperial.presage2.db.sql.Environment;
@@ -23,7 +22,7 @@ import com.google.inject.name.Named;
 public class ConnectionlessStorage extends LPGDashStorage {
 
 	private enum OutputTable {
-		playerScore, roundGlobals
+		playerScore, roundGlobals, clusters, players
 	};
 
 	Map<OutputTable, FileWriter> outputFiles = new HashMap<OutputTable, FileWriter>();
@@ -154,6 +153,25 @@ public class ConnectionlessStorage extends LPGDashStorage {
 			logger.warn(e);
 			throw new RuntimeException(e);
 		}
+		try {
+			Writer out = getOutputFile(OutputTable.clusters);
+			for (Cluster c : this.game.getClusters()) {
+				if (!this.added.contains(c)) {
+					out.append(Long.toString(simId));
+					out.append('\t');
+					out.append(Integer.toString(c.getId()));
+					out.append('\t');
+					out.append(c.getAllocationMethod().toString());
+					out.append('\t');
+					out.append(Integer.toString(this.game.getRoundNumber()));
+					out.append('\n');
+					this.added.add(c);
+				}
+			}
+		} catch (IOException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		}
 	}
 
 	@Override
@@ -216,6 +234,28 @@ public class ConnectionlessStorage extends LPGDashStorage {
 			}
 			agentTransientQ.clear();
 			agentTransientQ.addAll(notfullyProcessed);
+		} catch (IOException e) {
+			logger.warn(e);
+			throw new RuntimeException(e);
+		}
+	}
+
+	@Override
+	protected synchronized void updateAgents() {
+		try {
+			Writer out = getOutputFile(OutputTable.players);
+			for (Agent a : agentQ) {
+				out.append(Long.toString(simId));
+				out.append('\t');
+				out.append(a.getName());
+				out.append('\t');
+				out.append(Double.toString(getProperty(a.properties, "pCheat",
+						0.0)));
+				out.append('\t');
+				out.append(a.properties.get("cheatOn").substring(0, 1));
+				out.append('\n');
+			}
+			agentQ.clear();
 		} catch (IOException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);
