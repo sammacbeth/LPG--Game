@@ -143,7 +143,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 	 * timestep.
 	 */
 	@Parameter(name = "pReproduce", optional = true)
-	public double pReproduce = 0.01;
+	public double pReproduce = 0.1;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -319,7 +319,10 @@ public class LPGGameSimulation extends InjectedSimulation {
 				for (Map.Entry<Cluster, List<LPGPlayer>> clEntry : clusterMembers
 						.entrySet()) {
 					List<LPGPlayer> members = clEntry.getValue();
-					int childCount = (int) Math.ceil(members.size() * reproductionFactor);
+					if (members.size() > 100)
+						continue;
+					int childCount = (int) Math.ceil(members.size()
+							* reproductionFactor);
 					for (int i = 0; i < childCount; i++) {
 						conceivePlayer(clEntry.getKey(), members);
 					}
@@ -329,7 +332,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			// generate new g and q
 			for (Player p : players) {
 				if (game.getCluster(p.getId()) != null) {
-					session.insert(new Generate(p, game.getRoundNumber() + 1));
+					session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
 				}
 			}
 		}
@@ -382,7 +385,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			// determine offspring characteristics
 			double childPCheat = ((first.pCheat + second.pCheat) / 2);
 			Cheat childCheatOn = first.cheatOn;
-			double childSize = ((first.pCheat + second.pCheat) / 2);
+			double childSize = ((first.size + second.size) / 2);
 			// mutation
 			childPCheat += (0.1 * rnd.nextDouble()) - 0.05;
 			childPCheat = Math.max(0.0, childPCheat);

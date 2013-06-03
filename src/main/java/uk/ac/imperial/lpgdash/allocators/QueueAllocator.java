@@ -35,11 +35,17 @@ public class QueueAllocator {
 		Iterator<Player> it = queue.iterator();
 		while (it.hasNext() && poolSize > 0) {
 			Player p = it.next();
-			double allocation = Math.min(p.getD(), poolSize);
-			session.insert(new Allocate(p, allocation, t));
-			poolSize -= allocation;
+			if (players.contains(p)) {
+				double allocation = Math.min(p.getD(), poolSize);
+				session.insert(new Allocate(p, allocation, t));
+				poolSize -= allocation;
+				allocated.addLast(p);
+				// stop when we can't fully allocate head of queue. Leave them
+				// at head for full allocation next round.
+				if (allocation < p.getD() && poolSize <= 0)
+					break;
+			}
 			it.remove();
-			allocated.addLast(p);
 		}
 		queue.addAll(allocated);
 		for (Player p : players) {
