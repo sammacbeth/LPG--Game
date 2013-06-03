@@ -266,7 +266,7 @@ public class LPGCLI extends Presage2CLI {
 	void multi_cluster_create(int repeats, int seed) {
 		int rounds = 4000;
 		double[] betas = { 0.4 };
-		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM;
+		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM + "," + Allocation.RATION + "," + Allocation.QUEUE + "," + Allocation.LC_FIXED;
 		for (int i = 0; i < repeats; i++) {
 			for (double beta : betas) {
 				PersistentSimulation sim = getDatabase().createSimulation(
@@ -278,14 +278,15 @@ public class LPGCLI extends Presage2CLI {
 				sim.addParameter("alpha", Double.toString(0.1));
 				sim.addParameter("beta", Double.toString(beta));
 				sim.addParameter("gamma", Double.toString(0.1));
-				sim.addParameter("cCount", Integer.toString(20));
+				sim.addParameter("cCount", Integer.toString(100));
 				sim.addParameter("cPCheat", Double.toString(0.02));
-				sim.addParameter("ncCount", Integer.toString(20));
+				sim.addParameter("ncCount", Integer.toString(100));
 				sim.addParameter("ncPCheat", Double.toString(0.25));
 				sim.addParameter("seed", Integer.toString(seed + i));
 				sim.addParameter("soHack", Boolean.toString(true));
 				sim.addParameter("clusters", cluster);
 				sim.addParameter("cheatOn", Cheat.PROVISION.name());
+				sim.addParameter("dynamicClusters", Boolean.toString(true));
 			}
 		}
 		stopDatabase();

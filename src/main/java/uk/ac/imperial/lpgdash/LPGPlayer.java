@@ -327,7 +327,7 @@ public class LPGPlayer extends AbstractParticipant {
 
 	private void assessClusterCreation() {
 		Set<UUID> op = this.game.getOrphanPlayers();
-		if (op.size() > this.minWaitingAgents) {
+		if (op.size() >= this.minWaitingAgents) {
 			logger.info("More than " + this.minWaitingAgents
 					+ " orphans... why not create cluster?");
 			if (numClustersCreated < maxClustersCreated) {
@@ -397,17 +397,22 @@ public class LPGPlayer extends AbstractParticipant {
 
 			boolean leaveCluster = this.dissatisfactionCount >= this.leaveThreshold;
 			if (leaveCluster) {
-				definitelyLeftClusters.add(cluster);
 				if (cluster == null) {
 					joinCluster(preferred);
 					cluster = preferred;
 					satisfaction = clusterSatisfaction.get(cluster);
 				} else if (!preferred.equals(cluster)) {
+					if (clusterSatisfaction.get(cluster) < tau) {
+						definitelyLeftClusters.add(cluster);
+					}
 					leaveCluster();
 					joinCluster(preferred);
 					cluster = preferred;
 					satisfaction = clusterSatisfaction.get(cluster);
 				} else {
+					if (clusterSatisfaction.get(cluster) < tau) {
+						definitelyLeftClusters.add(cluster);
+					}
 					leaveCluster();
 					cluster = null;
 				}
