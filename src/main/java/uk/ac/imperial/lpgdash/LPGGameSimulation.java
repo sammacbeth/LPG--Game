@@ -57,6 +57,15 @@ public class LPGGameSimulation extends InjectedSimulation {
 	protected int playerCtr = 0;
 	protected int genCtr = 0;
 
+	@Parameter(name = "a", optional = true)
+	public double a = 2;
+	@Parameter(name = "b", optional = true)
+	public double b = 1;
+	@Parameter(name = "c", optional = true)
+	public double c = 3;
+	@Parameter(name = "alternateUtility", optional = true)
+	public boolean alternateUtility = false;
+
 	@Parameter(name = "pop", optional = true)
 	public String pop = "static";
 
@@ -187,6 +196,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 
 	@Override
 	protected void addToScenario(Scenario s) {
+		// initialise globals from parameters
+		Globals.alternateUtility = this.alternateUtility;
+
 		this.scenario = s;
 		// set up rng
 		this.rnd = new Random(this.seed);
@@ -274,8 +286,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 	protected LPGPlayer createPlayer(String name, double pCheat, double size,
 			String type, Cheat cheatOn, Cluster cluster) {
 		UUID pid = UUID.randomUUID();
-		LPGPlayer ag = new LPGPlayer(pid, name, pCheat, alpha, beta, cheatOn,
-				getClusterLeave(), resetSatisfaction, size, rnd.nextLong());
+		LPGPlayer ag = new LPGPlayer(pid, name, a, b, c, pCheat, alpha, beta,
+				cheatOn, getClusterLeave(), resetSatisfaction, size,
+				rnd.nextLong());
 		ag.permCreateCluster = this.dynamicClusters;
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
@@ -332,7 +345,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 			// generate new g and q
 			for (Player p : players) {
 				if (game.getCluster(p.getId()) != null) {
-					session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
+					session.insert(new Generate(p, game.getRoundNumber() + 1,
+							rnd));
 				}
 			}
 		}

@@ -89,10 +89,14 @@ public class LPGPlayer extends AbstractParticipant {
 		this.beta = beta;
 	}
 
-	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
-			double beta, Cheat cheatOn, ClusterLeaveAlgorithm clLeave,
-			boolean resetSatisfaction, double size, long rndSeed) {
+	public LPGPlayer(UUID id, String name, double a, double b, double c,
+			double pCheat, double alpha, double beta, Cheat cheatOn,
+			ClusterLeaveAlgorithm clLeave, boolean resetSatisfaction,
+			double size, long rndSeed) {
 		this(id, name, pCheat, alpha, beta);
+		this.a = a;
+		this.b = b;
+		this.c = c;
 		this.cheatOn = cheatOn;
 		this.resetSatisfaction = resetSatisfaction;
 		this.size = size;
@@ -285,7 +289,8 @@ public class LPGPlayer extends AbstractParticipant {
 		if (rTotal >= q)
 			u = a * q + b * (rTotal - q);
 		else
-			u = a * rTotal - c * (q - rTotal);
+			// alternate utility: use b instead of a for accrued resource payoff
+			u = (Globals.alternateUtility ? b : a) * rTotal - c * (q - rTotal);
 
 		if (rP >= d)
 			satisfaction = satisfaction + alpha * (1 - satisfaction);
