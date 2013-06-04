@@ -34,7 +34,7 @@ rule "Penalise non-compliance"
 		MemberOf( $p : player, $c : cluster, cluster.allocationMethod == Allocation.QUEUE )
 		$q : QueueAllocator( c == $c )
 		Round( $t : number, type == RoundType.APPROPRIATE )
-		not compliantRound( $c , $p, $t ;) 
+		Violation( $p, $c, $t; )
 	then
 		$q.penalise($p);
 end

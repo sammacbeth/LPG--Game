@@ -30,15 +30,6 @@ query lcCluster(Cluster c)
 		Allocation.LC_SO ) )
 end
 
-query compliantRound(Cluster c, Player p, int $t)
-	MemberOf( player == p, cluster == c )
-	Generate( t == $t, $g : g, $q : q, player == p )
-	Demand( $d : quantity, player == p, t == $t, quantity <= $q )
-	Provision( $p : quantity, player == p, t == $t, quantity >= $g )
-	Allocate( $r : quantity, player == p, t == $t )
-	Appropriate( $rP : quantity, player == p, t == $t, quantity <= $r )
-end
-
 rule "Prune LoggedHistory"
 	when
 		$l : LoggedHistory( $a : act )
@@ -123,11 +114,11 @@ rule "Count compliant rounds new"
 		MemberOf( $p : player, $c : cluster )
 		lcCluster( $c ;)
 		Round( $t : number, type == RoundType.APPROPRIATE )
-		compliantRound( $c , $p, $t ;) 
+		not (exists (Violation( $p, $c, $t; )))
 	then
 		PlayerHistory hist = $p.getHistory().get($c);
 		hist.incrementCompliantRounds();
-		//logger.info( "Compliant rounds: "+ hist.getCompliantRounds() +", "+ $p );
+		logger.info( "Compliant rounds: "+ hist.getCompliantRounds() +", "+ $p );
 end
 
 rule "Calculate satisfaction from previous round"

@@ -1,0 +1,76 @@
+package uk.ac.imperial.lpgdash
+
+import uk.ac.imperial.lpgdash.actions.*
+import uk.ac.imperial.lpgdash.facts.*
+import uk.ac.imperial.lpgdash.RoundType
+import uk.ac.imperial.lpgdash.Globals
+
+global org.apache.log4j.Logger logger
+global java.util.Random rnd
+
+declare Violation
+	@role( event )
+	player : Player		@key
+	cluster : uk.ac.imperial.lpgdash.facts.Cluster	@key
+	time : int 			@key
+	on : String
+end
+
+query compliantRound(Cluster c, Player p, int $t)
+	not(exists( Violation( $p, $c, $t; ) ))
+end
+
+rule "Detect cheat on provision"
+	salience 1
+	when
+		Round( $t : number, type == RoundType.APPROPRIATE )
+		MemberOf( $p : player, $c : cluster )
+		Generate( t == $t, $g : g, $q : q, player == $p )
+		Provision( player == $p, t == $t, quantity < $g )
+	then
+		Violation v = new Violation($p, $c, $t);
+		v.setOn("provision");
+		if(rnd.nextDouble() < Globals.pDetectInstitutionalCheat) {
+			logger.info(v + " (detected)");
+			insert( v );
+		} else {
+			logger.info(v + " (undetected)");
+		}
+end
+
+rule "Detect cheat on demand"
+	salience 1
+	when
+		Round( $t : number, type == RoundType.APPROPRIATE )
+		MemberOf( $p : player, $c : cluster )
+		Generate( t == $t, $g : g, $q : q, player == $p )
+		Demand( player == $p, t == $t, quantity > $q )
+	then
+		Violation v = new Violation($p, $c, $t);
+		v.setOn("demand");
+		if(rnd.nextDouble() < Globals.pDetectInstitutionalCheat) {
+			logger.info(v + " (detected)");
+			insert( v );
+		} else {
+			logger.info(v + " (undetected)");
+		}
+end
+
+rule "Detect cheat on appropriate"
+	salience 1
+	when
+		Round( $t : number, type == RoundType.APPROPRIATE )
+		MemberOf( $p : player, $c : cluster )
+		Generate( t == $t, $g : g, $q : q, player == $p )
+		Allocate( $r : quantity, player == $p, t == $t )
+		Appropriate( $rP : quantity, player == $p, t == $t, quantity > $r )
+	then
+		Violation v = new Violation( $p, $c, $t );
+		v.setOn("appropriate");
+		if(rnd.nextDouble() < Globals.pDetectPhysicalCheat) {
+			logger.info(v + " (detected)");
+			insert( v );
+		} else {
+			logger.info(v + " (undetected)");
+		}
+end

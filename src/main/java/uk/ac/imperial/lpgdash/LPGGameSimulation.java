@@ -154,6 +154,11 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Parameter(name = "pReproduce", optional = true)
 	public double pReproduce = 0.1;
 
+	@Parameter(name = "pDetectInstitutionalCheat", optional = true)
+	public double pDetectInstitutionalCheat = 1.0;
+	@Parameter(name = "pDetectPhysicalCheat", optional = true)
+	public double pDetectPhysicalCheat = 1.0;
+
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
 	}
@@ -185,6 +190,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 				.addParticipantGlobalEnvironmentService(LPGService.class)
 				.setStorage(RuleStorage.class));
 		modules.add(new RuleModule().addClasspathDrlFile("LPGDash.drl")
+				.addClasspathDrlFile("Institution.drl")
 				.addClasspathDrlFile("RationAllocation.drl")
 				.addClasspathDrlFile("RandomAllocation.drl")
 				.addClasspathDrlFile("LegitimateClaimsAllocation.drl")
@@ -198,6 +204,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 	protected void addToScenario(Scenario s) {
 		// initialise globals from parameters
 		Globals.alternateUtility = this.alternateUtility;
+		Globals.pDetectInstitutionalCheat = this.pDetectInstitutionalCheat;
+		Globals.pDetectPhysicalCheat = this.pDetectPhysicalCheat;
 
 		this.scenario = s;
 		// set up rng
@@ -207,6 +215,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 		session.setGlobal("logger", this.logger);
 		session.setGlobal("session", session);
 		session.setGlobal("storage", this.storage);
+		session.setGlobal("rnd", new Random(rnd.nextLong()));
 
 		Cluster[] clusterArr = initClusters();
 
