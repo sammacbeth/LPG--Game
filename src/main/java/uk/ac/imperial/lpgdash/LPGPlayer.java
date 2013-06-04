@@ -434,43 +434,55 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	class UtilityClustering implements ClusterSelect {
-		double deathThreshold = -100;
-		double leaveThreshold = -20;
+		int acclimatisationRounds = 50;
 		Set<Cluster> definitelyLeftClusters = new HashSet<Cluster>();
+		double leaveRate = -0.1;
+		double deathRate = -0.5;
 
 		@Override
 		public void assessClusters() {
 			// death
-			if (overallUtility.getSum() < deathThreshold) {
+			if (overallUtility.getN() > 50
+					&& overallUtility.getMean() < deathRate) {
 				if (cluster != null)
 					leaveCluster();
 				dead = true;
 				return;
 			}
+			// acclimatisation period in new cluster
+			if (cluster != null && --acclimatisationRounds > 0)
+				return;
+
 			checkNewClusters();
 
-			// find preferred cluster
-			Cluster preferred = cluster;
-			double maxUtility = clusterUtilities.containsKey(preferred) ? clusterUtilities
-					.get(cluster).getSum() : deathThreshold;
-			for (Entry<Cluster, SummaryStatistics> e : clusterUtilities
-					.entrySet()) {
-				if (e.getValue().getSum() > maxUtility + 5) {
-					maxUtility = e.getValue().getSum();
-					preferred = e.getKey();
+			// get our current rate of utility generation in this cluster, or
+			// lowest possible value if we're cluster-less.
+			double currentRate = clusterUtilities.containsKey(cluster) ? clusterUtilities
+					.get(cluster).getMean() : deathRate;
+			if (clusterUtilities.size() > 1) {
+				// find preferred cluster and see if I want to move
+				Cluster preferred = cluster;
+				double maxUtility = currentRate;
+				for (Entry<Cluster, SummaryStatistics> e : clusterUtilities
+						.entrySet()) {
+					if (e.getValue().getMean() > maxUtility + 5) {
+						maxUtility = e.getValue().getMean();
+						preferred = e.getKey();
+					}
 				}
-			}
 
-			if (preferred == null) {
-				return;
-			}
-			if (!preferred.equals(cluster) && maxUtility > leaveThreshold) {
+				if (preferred == null) {
+					return;
+				}
+				if (!preferred.equals(cluster) && maxUtility > currentRate) {
+					leaveCluster();
+					joinCluster(preferred);
+					cluster = preferred;
+					acclimatisationRounds = 50;
+				}
+			} else if (cluster != null && currentRate < leaveRate) {
 				leaveCluster();
-				joinCluster(preferred);
-				cluster = preferred;
-			} else if (overallUtility.getN() > 10
-					&& maxUtility < leaveThreshold && cluster != null) {
-				leaveCluster();
+				acclimatisationRounds = 50;
 			}
 		}
 
