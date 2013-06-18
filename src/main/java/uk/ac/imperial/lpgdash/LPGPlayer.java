@@ -32,7 +32,7 @@ import uk.ac.imperial.presage2.util.participant.AbstractParticipant;
 public class LPGPlayer extends AbstractParticipant {
 
 	enum ClusterLeaveAlgorithm {
-		INSTANT, THRESHOLD, UTILITY
+		INSTANT, THRESHOLD, UTILITY, AGE
 	};
 
 	enum ClusterSelectionAlgorithm {
@@ -65,6 +65,8 @@ public class LPGPlayer extends AbstractParticipant {
 	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
 	DescriptiveStatistics rollingUtility = new DescriptiveStatistics(100);
 	SummaryStatistics overallUtility = new SummaryStatistics();
+	DescriptiveStatistics scarcity = new DescriptiveStatistics(100);
+	DescriptiveStatistics need = new DescriptiveStatistics(100);
 
 	double size = 1;
 
@@ -111,6 +113,9 @@ public class LPGPlayer extends AbstractParticipant {
 			break;
 		case UTILITY:
 			this.clusterSelection = new UtilityClustering();
+			break;
+		case AGE:
+			this.clusterSelection = new LimitLife();
 		}
 	}
 
@@ -161,21 +166,25 @@ public class LPGPlayer extends AbstractParticipant {
 				assessClusterCreation();
 		}
 
+		if (this.cluster == null)
+			return;
+
 		if (game.getRound() == RoundType.DEMAND) {
-			if (this.cluster != null && game.getRoundNumber() > 1) {
+			if (game.getRoundNumber() > 1) {
 				// determine utility gained from last round
 				calculateScores();
 			}
 			if (!(clusterLeave == ClusterLeaveAlgorithm.INSTANT)
 					|| game.getRoundNumber() % 20 == 0) {
 				clusterSelection.assessClusters();
-				if (this.cluster == null) {
-					return;
-				}
 			}
 			// update g and q for this round
 			g = game.getG(getID());
 			q = game.getQ(getID());
+
+			if (this.cluster == null) {
+				return;
+			}
 
 			if ((this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)
 					&& rnd.nextDouble() < pCheat) {
@@ -284,13 +293,28 @@ public class LPGPlayer extends AbstractParticipant {
 	protected void calculateScores() {
 		double r = game.getAllocated(getID());
 		double rP = game.getAppropriated(getID());
+
+		if (g == 0 && q == 0)
+			return;
+
+		// playing the game outside of a cluster
+		if (this.cluster == null) {
+			r = 0;
+			rP = 0;
+			this.p = 0;
+			this.d = 0;
+		}
+
 		double rTotal = rP + (this.g - this.p);
 		double u = 0;
+		/*
+		 * if (rTotal >= q) u = a * q + b * (rTotal - q); else u = a * rTotal -
+		 * c * (q - rTotal);
+		 */
 		if (rTotal >= q)
 			u = a * q + b * (rTotal - q);
 		else
-			// alternate utility: use b instead of a for accrued resource payoff
-			u = (Globals.alternateUtility ? b : a) * rTotal - c * (q - rTotal);
+			u = b * rTotal;
 
 		if (rP >= d)
 			satisfaction = satisfaction + alpha * (1 - satisfaction);
@@ -313,7 +337,8 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("RTotal", Double.toString(rTotal));
 			state.setProperty("U", Double.toString(u));
 			state.setProperty("o", Double.toString(satisfaction));
-			state.setProperty("cluster", Integer.toString(this.cluster.getId()));
+			state.setProperty("cluster", Integer
+					.toString(this.cluster != null ? this.cluster.getId() : -1));
 		}
 
 		if (!clusterUtilities.containsKey(this.cluster)) {
@@ -323,6 +348,10 @@ public class LPGPlayer extends AbstractParticipant {
 		clusterUtilities.get(this.cluster).addValue(u);
 		rollingUtility.addValue(u);
 		overallUtility.addValue(u);
+		// observed scarcity for this agent
+		scarcity.addValue(this.g / this.q);
+		// observed need for this agent
+		need.addValue(this.q);
 	}
 
 	private void assessClusterCreation() {
@@ -436,11 +465,12 @@ public class LPGPlayer extends AbstractParticipant {
 	class UtilityClustering implements ClusterSelect {
 		int acclimatisationRounds = 50;
 		Set<Cluster> definitelyLeftClusters = new HashSet<Cluster>();
-		double leaveRate = -0.1;
-		double deathRate = -0.5;
+		double leaveRate = 0.0; // = utility playing alone
+		double deathRate = leaveRate;
 
 		@Override
 		public void assessClusters() {
+			determineTargetRates();
 			// death
 			if (overallUtility.getN() > 50
 					&& overallUtility.getMean() < deathRate) {
@@ -486,6 +516,13 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 		}
 
+		void determineTargetRates() {
+			// calculate expected utility rate
+			deathRate = b * scarcity.getMean() * need.getMean();
+			leaveRate = deathRate + a * scarcity.getMean() * need.getMean();
+			leaveRate /= 2;
+		}
+
 		private void checkNewClusters() {
 			// initialise/update cluster utilities
 			// Add new available clusters
@@ -510,5 +547,33 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 		}
 
+	}
+
+	class LimitLife extends UtilityClustering {
+		int age = 0;
+		int baselifespan = 200;
+
+		@Override
+		public void assessClusters() {
+			if (clusterUtilities.size() > 1)
+				super.assessClusters();
+			else
+				determineTargetRates();
+
+			age++;
+
+			if (cluster != null && --acclimatisationRounds > 0)
+				return;
+
+			int expected = (int) (baselifespan + (overallUtility.getMean() - leaveRate)
+					* baselifespan);
+			if (age > expected) {
+				// death of old age
+				if (cluster != null)
+					leaveCluster();
+				dead = true;
+				logger.info("Died at age " + age);
+			}
+		}
 	}
 }

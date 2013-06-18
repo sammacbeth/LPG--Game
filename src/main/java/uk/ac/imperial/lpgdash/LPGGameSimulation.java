@@ -146,6 +146,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 	public int reproductionInterval = 100;
 	@Parameter(name = "reproductionFactor", optional = true)
 	public double reproductionFactor = 0.5;
+	@Parameter(name = "mutationFactor", optional = true)
+	public double mutationFactor = 0.1;
 
 	/**
 	 * With random reproduction, this is the probability of reproduction in a
@@ -223,9 +225,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 			// populations of random strategy agents
 			DecimalFormat format = new DecimalFormat("0000");
 			for (int n = 0; n < cCount + ncCount; n++) {
-				createPlayer(format.format(n) + "gen0", 0.4 * rnd.nextDouble(),
-						cSize, "0", getCheatOn(), clusterArr[n
-								% clusterArr.length]);
+				createPlayer(format.format(n) + "gen0",
+						0.5 * rnd.nextDouble() + 0.5, cSize, "0", getCheatOn(),
+						clusterArr[n % clusterArr.length]);
 			}
 		} else {
 			for (int n = 0; n < cCount; n++) {
@@ -323,7 +325,10 @@ public class LPGGameSimulation extends InjectedSimulation {
 					.getRoundNumber() > 0)
 					|| reproduction == Reproduction.RANDOM
 					&& rnd.nextDouble() < pReproduce) {
-				genCtr++;
+				if (reproduction == Reproduction.RANDOM)
+					genCtr = (int) Math.ceil((double) game.getRoundNumber() / reproductionInterval);
+				else
+					genCtr++;
 				// collect players in each cluster
 				Map<Cluster, List<LPGPlayer>> clusterMembers = new HashMap<Cluster, List<LPGPlayer>>();
 				for (Participant p : scenario.getParticipants()) {
@@ -410,7 +415,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 			Cheat childCheatOn = first.cheatOn;
 			double childSize = ((first.size + second.size) / 2);
 			// mutation
-			childPCheat += (0.1 * rnd.nextDouble()) - 0.05;
+			childPCheat += (mutationFactor * rnd.nextDouble())
+					- (mutationFactor / 2);
 			childPCheat = Math.max(0.0, childPCheat);
 			childPCheat = Math.min(1.0, childPCheat);
 			DecimalFormat format = new DecimalFormat("0000");
