@@ -44,9 +44,7 @@ public class LPGPlayer extends AbstractParticipant {
 	double d = 0;
 	double p = 0;
 
-	double a = 2;
-	double b = 1;
-	double c = 3;
+	final UtilityFunction ut;
 
 	double pCheat = 0.0;
 
@@ -79,26 +77,15 @@ public class LPGPlayer extends AbstractParticipant {
 	boolean permCreateCluster = false;
 	boolean dead = false;
 
-	public LPGPlayer(UUID id, String name) {
-		super(id, name);
-	}
-
-	public LPGPlayer(UUID id, String name, double pCheat, double alpha,
-			double beta) {
-		super(id, name);
-		this.pCheat = pCheat;
-		this.alpha = alpha;
-		this.beta = beta;
-	}
-
 	public LPGPlayer(UUID id, String name, double a, double b, double c,
 			double pCheat, double alpha, double beta, Cheat cheatOn,
 			ClusterLeaveAlgorithm clLeave, boolean resetSatisfaction,
 			double size, long rndSeed) {
-		this(id, name, pCheat, alpha, beta);
-		this.a = a;
-		this.b = b;
-		this.c = c;
+		super(id, name);
+		this.pCheat = pCheat;
+		this.alpha = alpha;
+		this.beta = beta;
+		this.ut = new UtilityFunction(a, b, c);
 		this.cheatOn = cheatOn;
 		this.resetSatisfaction = resetSatisfaction;
 		this.size = size;
@@ -134,9 +121,9 @@ public class LPGPlayer extends AbstractParticipant {
 		}
 		if (this.persist != null) {
 			this.persist.setProperty("pCheat", Double.toString(this.pCheat));
-			this.persist.setProperty("a", Double.toString(this.a));
-			this.persist.setProperty("b", Double.toString(this.b));
-			this.persist.setProperty("c", Double.toString(this.c));
+			this.persist.setProperty("a", Double.toString(this.ut.a));
+			this.persist.setProperty("b", Double.toString(this.ut.b));
+			this.persist.setProperty("c", Double.toString(this.ut.c));
 			this.persist.setProperty("alpha", Double.toString(this.alpha));
 			this.persist.setProperty("beta", Double.toString(this.beta));
 			this.persist.setProperty("cheatOn", this.cheatOn.name());
@@ -305,16 +292,8 @@ public class LPGPlayer extends AbstractParticipant {
 			this.d = 0;
 		}
 
-		double rTotal = rP + (this.g - this.p);
-		double u = 0;
-		/*
-		 * if (rTotal >= q) u = a * q + b * (rTotal - q); else u = a * rTotal -
-		 * c * (q - rTotal);
-		 */
-		if (rTotal >= q)
-			u = a * q + b * (rTotal - q);
-		else
-			u = b * rTotal;
+		double rTotal = rP + (g - p);
+		double u = ut.getUtility(g, q, d, p, r, rP);
 
 		if (rP >= d)
 			satisfaction = satisfaction + alpha * (1 - satisfaction);
@@ -518,8 +497,9 @@ public class LPGPlayer extends AbstractParticipant {
 
 		void determineTargetRates() {
 			// calculate expected utility rate
-			deathRate = b * scarcity.getMean() * need.getMean();
-			leaveRate = deathRate + a * scarcity.getMean() * need.getMean();
+			deathRate = ut.estimateFullDefectUtility(scarcity.getMean());
+			leaveRate = deathRate
+					+ ut.estimateFullComplyUtility(scarcity.getMean());
 			leaveRate /= 2;
 		}
 
@@ -575,5 +555,36 @@ public class LPGPlayer extends AbstractParticipant {
 				logger.info("Died at age " + age);
 			}
 		}
+	}
+
+	class UtilityFunction {
+		double a;
+		double b;
+		double c;
+
+		UtilityFunction(double a, double b, double c) {
+			super();
+			this.a = a;
+			this.b = b;
+			this.c = c;
+		}
+
+		public double getUtility(double g, double q, double d, double p,
+				double r, double rP) {
+			double rTotal = rP + (g - p);
+			if (rTotal >= q)
+				return a + b * (rTotal / q + 1);
+			else
+				return c * rTotal / q;
+		}
+
+		public double estimateFullComplyUtility(double scarcity) {
+			return a * scarcity;
+		}
+
+		public double estimateFullDefectUtility(double scarcity) {
+			return c * scarcity;
+		}
+
 	}
 }
