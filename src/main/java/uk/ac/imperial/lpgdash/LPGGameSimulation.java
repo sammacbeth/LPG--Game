@@ -62,9 +62,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Parameter(name = "b", optional = true)
 	public double b = 1;
 	@Parameter(name = "c", optional = true)
-	public double c = 3;
-	@Parameter(name = "alternateUtility", optional = true)
-	public boolean alternateUtility = false;
+	public double c = 1;
+	@Parameter(name = "adaptiveAgents", optional = true)
+	public boolean adaptiveAgents = false;
 
 	@Parameter(name = "pop", optional = true)
 	public String pop = "static";
@@ -205,7 +205,6 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Override
 	protected void addToScenario(Scenario s) {
 		// initialise globals from parameters
-		Globals.alternateUtility = this.alternateUtility;
 		Globals.pDetectInstitutionalCheat = this.pDetectInstitutionalCheat;
 		Globals.pDetectPhysicalCheat = this.pDetectPhysicalCheat;
 
@@ -297,9 +296,11 @@ public class LPGGameSimulation extends InjectedSimulation {
 	protected LPGPlayer createPlayer(String name, double pCheat, double size,
 			String type, Cheat cheatOn, Cluster cluster) {
 		UUID pid = UUID.randomUUID();
-		LPGPlayer ag = new LPGPlayer(pid, name, a, b, c, pCheat, alpha, beta,
-				cheatOn, getClusterLeave(), resetSatisfaction, size,
-				rnd.nextLong());
+		LPGPlayer ag = adaptiveAgents ? new AdaptivePlayer(pid, name, a, b, c,
+				pCheat, alpha, beta, cheatOn, getClusterLeave(),
+				resetSatisfaction, size, rnd.nextLong()) : new LPGPlayer(pid,
+				name, a, b, c, pCheat, alpha, beta, cheatOn, getClusterLeave(),
+				resetSatisfaction, size, rnd.nextLong());
 		ag.permCreateCluster = this.dynamicClusters;
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
@@ -326,7 +327,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 					|| reproduction == Reproduction.RANDOM
 					&& rnd.nextDouble() < pReproduce) {
 				if (reproduction == Reproduction.RANDOM)
-					genCtr = (int) Math.ceil((double) game.getRoundNumber() / reproductionInterval);
+					genCtr = (int) Math.ceil((double) game.getRoundNumber()
+							/ reproductionInterval);
 				else
 					genCtr++;
 				// collect players in each cluster
@@ -358,10 +360,9 @@ public class LPGGameSimulation extends InjectedSimulation {
 			}
 			// generate new g and q
 			for (Player p : players) {
-				if (game.getCluster(p.getId()) != null) {
-					session.insert(new Generate(p, game.getRoundNumber() + 1,
-							rnd));
-				}
+				// if (game.getCluster(p.getId()) != null) {
+				session.insert(new Generate(p, game.getRoundNumber() + 1, rnd));
+				// }
 			}
 		}
 		// analyse objects in working memory.

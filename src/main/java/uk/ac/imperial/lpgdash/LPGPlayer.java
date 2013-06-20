@@ -65,6 +65,8 @@ public class LPGPlayer extends AbstractParticipant {
 	SummaryStatistics overallUtility = new SummaryStatistics();
 	DescriptiveStatistics scarcity = new DescriptiveStatistics(100);
 	DescriptiveStatistics need = new DescriptiveStatistics(100);
+	DescriptiveStatistics compliantUtility = new DescriptiveStatistics(50);
+	DescriptiveStatistics nonCompliantUtility = new DescriptiveStatistics(50);
 
 	double size = 1;
 
@@ -76,6 +78,7 @@ public class LPGPlayer extends AbstractParticipant {
 	boolean resetSatisfaction = false;
 	boolean permCreateCluster = false;
 	boolean dead = false;
+	boolean compliantRound = true;
 
 	public LPGPlayer(UUID id, String name, double a, double b, double c,
 			double pCheat, double alpha, double beta, Cheat cheatOn,
@@ -142,8 +145,8 @@ public class LPGPlayer extends AbstractParticipant {
 		super.execute();
 		this.cluster = this.game.getCluster(getID());
 
-		if (dead)
-			return;
+		// if (dead)
+		// return;
 
 		if (!dead && permCreateCluster && this.cluster == null
 				&& game.getRoundNumber() > 1
@@ -152,9 +155,6 @@ public class LPGPlayer extends AbstractParticipant {
 			if (this.cluster == null)
 				assessClusterCreation();
 		}
-
-		if (this.cluster == null)
-			return;
 
 		if (game.getRound() == RoundType.DEMAND) {
 			if (game.getRoundNumber() > 1) {
@@ -168,6 +168,7 @@ public class LPGPlayer extends AbstractParticipant {
 			// update g and q for this round
 			g = game.getG(getID());
 			q = game.getQ(getID());
+			this.compliantRound = true;
 
 			if (this.cluster == null) {
 				return;
@@ -175,6 +176,7 @@ public class LPGPlayer extends AbstractParticipant {
 
 			if ((this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)
 					&& rnd.nextDouble() < pCheat) {
+				this.compliantRound = false;
 				switch (this.cheatOn) {
 				case PROVISION:
 				default:
@@ -194,8 +196,9 @@ public class LPGPlayer extends AbstractParticipant {
 
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
 			if (this.cheatOn == Cheat.APPROPRIATE && rnd.nextDouble() < pCheat) {
-				double allocated = game.getAllocated(getID());
-				appropriate(allocated + rnd.nextDouble() * (1 - allocated));
+				// double allocated = game.getAllocated(getID());
+				appropriate(q + rnd.nextDouble() * (1 - q));
+				this.compliantRound = false;
 			} else {
 				appropriate(game.getAllocated(getID()));
 			}
@@ -318,6 +321,7 @@ public class LPGPlayer extends AbstractParticipant {
 			state.setProperty("o", Double.toString(satisfaction));
 			state.setProperty("cluster", Integer
 					.toString(this.cluster != null ? this.cluster.getId() : -1));
+			state.setProperty("pCheat", Double.toString(pCheat));
 		}
 
 		if (!clusterUtilities.containsKey(this.cluster)) {
@@ -331,6 +335,11 @@ public class LPGPlayer extends AbstractParticipant {
 		scarcity.addValue(this.g / this.q);
 		// observed need for this agent
 		need.addValue(this.q);
+		// (non-)compliant utility
+		if (compliantRound)
+			compliantUtility.addValue(u);
+		else
+			nonCompliantUtility.addValue(u);
 	}
 
 	private void assessClusterCreation() {
@@ -573,7 +582,7 @@ public class LPGPlayer extends AbstractParticipant {
 				double r, double rP) {
 			double rTotal = rP + (g - p);
 			if (rTotal >= q)
-				return a + b * (rTotal / q + 1);
+				return a + b * (rTotal / q - 1);
 			else
 				return c * rTotal / q;
 		}

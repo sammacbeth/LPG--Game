@@ -66,6 +66,7 @@ public class LPGDashStorage extends SqlStorage {
 							+ "`satisfaction` double NOT NULL,"
 							+ "`U` double NOT NULL,"
 							+ "`cluster` int(11) NOT NULL,"
+							+ "`pCheat` double NOT NULL,"
 							+ "PRIMARY KEY (`simID`,`player`,`round`),"
 							+ "KEY `simID` (`simID`),"
 							+ "KEY `player` (`player`),"
@@ -271,8 +272,8 @@ public class LPGDashStorage extends SqlStorage {
 		try {
 			insertPlayer = conn
 					.prepareStatement("REPLACE INTO playerScore "
-							+ "(simID, player, round, g, q, d, p, r, rP, rTotal, satisfaction, U, cluster)  "
-							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
+							+ "(simID, player, round, g, q, d, p, r, rP, rTotal, satisfaction, U, cluster, pCheat)  "
+							+ "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ");
 		} catch (SQLException e) {
 			logger.warn(e);
 			throw new RuntimeException(e);
@@ -310,6 +311,8 @@ public class LPGDashStorage extends SqlStorage {
 							getProperty(props, "RTotal", 0.0));
 					insertPlayer.setDouble(11, getProperty(props, "o", 0.0));
 					insertPlayer.setDouble(12, getProperty(props, "U", 0.0));
+					insertPlayer.setDouble(14,
+							getProperty(props, "pCheat", 0.0));
 					if (props.containsKey("cluster"))
 						insertPlayer.setInt(13,
 								Integer.parseInt(props.get("cluster")));

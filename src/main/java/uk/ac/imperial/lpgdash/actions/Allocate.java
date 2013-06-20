@@ -29,6 +29,10 @@ public class Allocate extends TimestampedAction {
 		return quantity;
 	}
 
+	public double getOrder() {
+		return order;
+	}
+
 	@Override
 	public String toString() {
 		return "Allocate [player=" + player.getName() + ", quantity="
