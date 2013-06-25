@@ -224,6 +224,9 @@ public class ConnectionlessStorage extends LPGDashStorage {
 						out.append(props.get("cluster"));
 					else
 						out.append('0');
+					out.append('\t');
+					out.append(Double
+							.toString(getProperty(props, "pCheat", 0.0)));
 					out.append('\n');
 
 					forRemoval.add(round.getKey());

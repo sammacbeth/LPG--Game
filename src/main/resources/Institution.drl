@@ -1,5 +1,11 @@
 package uk.ac.imperial.lpgdash
 
+import java.lang.Math
+import java.util.Collections
+import java.util.List
+import java.util.ArrayList
+import java.util.Iterator
+
 import uk.ac.imperial.lpgdash.actions.*
 import uk.ac.imperial.lpgdash.facts.*
 import uk.ac.imperial.lpgdash.RoundType
@@ -16,8 +22,55 @@ declare Violation
 	on : String
 end
 
+declare Monitored
+	@role( event )
+	player : Player @key
+	cluster : uk.ac.imperial.lpgdash.facts.Cluster	@key
+	time : int 			@key
+end
+
+declare TaskComplete
+	@role( event )
+	task : String @key
+	time : int @key
+end
+
 query compliantRound(Cluster c, Player p, int $t)
 	not(exists( Violation( $p, $c, $t; ) ))
+end
+
+rule "Monitor players"
+	salience 5 // after provision
+	no-loop
+	when
+		Round( $t : number, type == RoundType.DEMAND )
+		not TaskComplete("monitoring", $t;)
+		$c : Cluster( monitoringLevel > 0 )
+		$pool : ProvisionPool( cluster == $c )
+		$alp : AllocationPool( cluster == $c )
+		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
+	then
+		int toMonitor = (int) Math.ceil( $poolMembers.size() * $c.getMonitoringLevel() );
+		logger.info("Monitoring "+ toMonitor +" players.");
+		List members = new ArrayList($poolMembers);
+		Collections.shuffle(members);
+		Iterator it = members.iterator();
+		double resources = $pool.getQuantity();
+		while( resources > $c.getMonitoringCost() && toMonitor-- > 0 && it.hasNext() ) {
+			Player p = (Player) it.next();
+			Monitored m = new Monitored(p, $c, $t);
+			insert( m );
+			resources -= $c.getMonitoringCost();
+			logger.info(m);
+		}
+		modify($pool) {
+			setQuantity(resources);
+		}
+		modify($alp) {
+			setQuantity(resources);
+		}
+		logger.info("Pool is now: " + $pool);
+		insert( new TaskComplete("monitoring", $t) );
 end
 
 rule "Detect cheat on provision"
@@ -25,17 +78,14 @@ rule "Detect cheat on provision"
 	when
 		Round( $t : number, type == RoundType.APPROPRIATE )
 		MemberOf( $p : player, $c : cluster )
+		Monitored($p, $c, $t ;)
 		Generate( t == $t, $g : g, $q : q, player == $p )
 		Provision( player == $p, t == $t, quantity < $g )
 	then
 		Violation v = new Violation($p, $c, $t);
 		v.setOn("provision");
-		if(rnd.nextDouble() < Globals.pDetectInstitutionalCheat) {
-			logger.info(v + " (detected)");
-			insert( v );
-		} else {
-			logger.info(v + " (undetected)");
-		}
+		logger.info(v);
+		insert( v );
 end
 
 rule "Detect cheat on demand"
@@ -43,17 +93,14 @@ rule "Detect cheat on demand"
 	when
 		Round( $t : number, type == RoundType.APPROPRIATE )
 		MemberOf( $p : player, $c : cluster )
+		Monitored($p, $c, $t ;)
 		Generate( t == $t, $g : g, $q : q, player == $p )
 		Demand( player == $p, t == $t, quantity > $q )
 	then
 		Violation v = new Violation($p, $c, $t);
 		v.setOn("demand");
-		if(rnd.nextDouble() < Globals.pDetectInstitutionalCheat) {
-			logger.info(v + " (detected)");
-			insert( v );
-		} else {
-			logger.info(v + " (undetected)");
-		}
+		logger.info(v);
+		insert( v );
 end
 
 rule "Detect cheat on appropriate"
@@ -61,16 +108,29 @@ rule "Detect cheat on appropriate"
 	when
 		Round( $t : number, type == RoundType.APPROPRIATE )
 		MemberOf( $p : player, $c : cluster )
+		Monitored($p, $c, $t ;)
 		Generate( t == $t, $g : g, $q : q, player == $p )
 		Allocate( $r : quantity, player == $p, t == $t )
 		Appropriate( $rP : quantity, player == $p, t == $t, quantity > $r )
 	then
 		Violation v = new Violation( $p, $c, $t );
 		v.setOn("appropriate");
-		if(rnd.nextDouble() < Globals.pDetectPhysicalCheat) {
-			logger.info(v + " (detected)");
-			insert( v );
-		} else {
-			logger.info(v + " (undetected)");
-		}
+		logger.info(v);
+		insert( v );
+end
+
+rule "Prune monitored"
+	when
+		Round( $t : number )
+		$m : Monitored( $t > time + 10 )
+	then
+		retract($m);
+end
+
+rule "Prune tasks"
+	when
+		Round( $t : number )
+		$c : TaskComplete( $t > time + 10 )
+	then
+		retract($c);
 end

@@ -67,8 +67,8 @@ public class LPGCLI extends Presage2CLI {
 				.put("multi_cluster",
 						"Multi-cluster scenario with lc_so and random allocations over beta {0.1,0.4}");
 		experiments
-		.put("multi_cluster_create",
-				"Multi-cluster scenario allowing creation of new clusters with initially lc_so and random allocations over beta {0.4}");
+				.put("multi_cluster_create",
+						"Multi-cluster scenario allowing creation of new clusters with initially lc_so and random allocations over beta {0.4}");
 		experiments.put("memory", "Increasing agent memory sizes");
 		experiments.put("hack", "Check hacks.");
 		experiments.put("large_pop", "Large population.");
@@ -264,13 +264,15 @@ public class LPGCLI extends Presage2CLI {
 	}
 
 	void multi_cluster_create(int repeats, int seed) {
-		int rounds = 4000;
-		double[] betas = { 0.4 };
-		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM + "," + Allocation.RATION + "," + Allocation.QUEUE + "," + Allocation.LC_FIXED;
+		int rounds = 10000;
+		double[] betas = { 0.1 };
+		String cluster = Allocation.LC_SO.name() + "," + Allocation.RANDOM
+				+ "," + Allocation.RATION + "," + Allocation.QUEUE + ","
+				+ Allocation.LC_FIXED;
 		for (int i = 0; i < repeats; i++) {
 			for (double beta : betas) {
 				PersistentSimulation sim = getDatabase().createSimulation(
-						cluster + "_b=" + beta,
+						cluster,
 						"uk.ac.imperial.lpgdash.LPGGameSimulation",
 						"AUTO START", rounds);
 
@@ -291,7 +293,7 @@ public class LPGCLI extends Presage2CLI {
 		}
 		stopDatabase();
 	}
-	
+
 	void memory(int repeats, int seed) {
 		int rounds = 2002;
 		for (int i = 0; i < repeats; i++) {
@@ -541,8 +543,8 @@ public class LPGCLI extends Presage2CLI {
 	}
 
 	void cheatOnAppropriate(int repeats, int seed) {
-		Allocation[] clusters = { Allocation.RANDOM, Allocation.LC_FIXED,
-				Allocation.LC_SO };
+		Allocation[] clusters = { Allocation.RANDOM, Allocation.QUEUE,
+				Allocation.LC_FIXED, Allocation.LC_SO };
 		Cheat[] cheatMethods = { Cheat.DEMAND, Cheat.PROVISION,
 				Cheat.APPROPRIATE };
 		int rounds = 1002;

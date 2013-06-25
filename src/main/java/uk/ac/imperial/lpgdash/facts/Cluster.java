@@ -7,12 +7,21 @@ public class Cluster {
 	final int id;
 	Allocation allocationMethod;
 	final SummaryStatistics fairnessData;
+	double monitoringLevel = 0.0;
+	double monitoringCost = 0.0;
 
 	public Cluster(int id, Allocation allocationMethod) {
 		super();
 		this.id = id;
 		this.allocationMethod = allocationMethod;
 		this.fairnessData = new SummaryStatistics();
+	}
+
+	public Cluster(int id, Allocation allocationMethod, double monitoringLevel,
+			double monitoringCost) {
+		this(id, allocationMethod);
+		this.monitoringLevel = monitoringLevel;
+		this.monitoringCost = monitoringCost;
 	}
 
 	@Override
@@ -30,6 +39,15 @@ public class Cluster {
 
 	public SummaryStatistics getFairnessData() {
 		return fairnessData;
+	}
+
+	public double getMonitoringLevel() {
+		return monitoringLevel;
+	}
+
+	public double getMonitoringCost() {
+		// normalise against average provision
+		return monitoringCost*0.5;
 	}
 
 	public boolean isLC() {

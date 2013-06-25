@@ -156,10 +156,10 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Parameter(name = "pReproduce", optional = true)
 	public double pReproduce = 0.1;
 
-	@Parameter(name = "pDetectInstitutionalCheat", optional = true)
-	public double pDetectInstitutionalCheat = 1.0;
-	@Parameter(name = "pDetectPhysicalCheat", optional = true)
-	public double pDetectPhysicalCheat = 1.0;
+	@Parameter(name = "monitoringLevel", optional = true)
+	public double monitoringLevel = 1.0;
+	@Parameter(name = "monitoringCost", optional = true)
+	public double monitoringCost = 0.0;
 
 	public LPGGameSimulation(Set<AbstractModule> modules) {
 		super(modules);
@@ -205,8 +205,6 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Override
 	protected void addToScenario(Scenario s) {
 		// initialise globals from parameters
-		Globals.pDetectInstitutionalCheat = this.pDetectInstitutionalCheat;
-		Globals.pDetectPhysicalCheat = this.pDetectPhysicalCheat;
 
 		this.scenario = s;
 		// set up rng
@@ -261,7 +259,8 @@ public class LPGGameSimulation extends InjectedSimulation {
 			if (method == null)
 				throw new RuntimeException("Unknown allocation method '"
 						+ clusterNames[i] + "', could not create cluster!");
-			Cluster c = new Cluster(this.game.getNextNumCluster(), method);
+			Cluster c = new Cluster(this.game.getNextNumCluster(), method,
+					this.monitoringLevel, this.monitoringCost);
 			session.insert(c);
 			if (c.isLC()) {
 				LegitimateClaims lc = new LegitimateClaims(c, session,

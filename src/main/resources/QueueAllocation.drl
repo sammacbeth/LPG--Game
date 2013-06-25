@@ -21,7 +21,7 @@ rule "Queue resource allocation"
 		$poolMembers : List(size > 0) from accumulate( MemberOf( cluster == $c, $p : player ), collectList( $p ) )
 		$q : QueueAllocator( c == $c )
 	then
-		logger.info( $method +" allocation for resources " + $c);
+		logger.info( $method +" allocation for resources " + $c + " with "+ $pool);
 		$q.allocate($poolMembers, $pool.getQuantity(), $t );
 		modify( $pool ) {
 			setQuantity(0);

@@ -65,13 +65,11 @@ public class LPGPlayer extends AbstractParticipant {
 	SummaryStatistics overallUtility = new SummaryStatistics();
 	DescriptiveStatistics scarcity = new DescriptiveStatistics(100);
 	DescriptiveStatistics need = new DescriptiveStatistics(100);
-	DescriptiveStatistics compliantUtility = new DescriptiveStatistics(50);
-	DescriptiveStatistics nonCompliantUtility = new DescriptiveStatistics(50);
 
 	double size = 1;
 
 	protected LPGService game;
-	private Random rnd;
+	protected Random rnd;
 
 	ClusterLeaveAlgorithm clusterLeave = ClusterLeaveAlgorithm.THRESHOLD;
 	ClusterSelect clusterSelection;
@@ -168,15 +166,15 @@ public class LPGPlayer extends AbstractParticipant {
 			// update g and q for this round
 			g = game.getG(getID());
 			q = game.getQ(getID());
-			this.compliantRound = true;
 
 			if (this.cluster == null) {
 				return;
 			}
 
-			if ((this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)
-					&& rnd.nextDouble() < pCheat) {
-				this.compliantRound = false;
+			this.compliantRound = chooseStrategy();
+
+			if (!compliantRound
+					&& (this.cheatOn == Cheat.PROVISION || this.cheatOn == Cheat.DEMAND)) {
 				switch (this.cheatOn) {
 				case PROVISION:
 				default:
@@ -195,14 +193,18 @@ public class LPGPlayer extends AbstractParticipant {
 			}
 
 		} else if (game.getRound() == RoundType.APPROPRIATE) {
-			if (this.cheatOn == Cheat.APPROPRIATE && rnd.nextDouble() < pCheat) {
+			if (!compliantRound && this.cheatOn == Cheat.APPROPRIATE) {
 				// double allocated = game.getAllocated(getID());
 				appropriate(q + rnd.nextDouble() * (1 - q));
-				this.compliantRound = false;
 			} else {
 				appropriate(game.getAllocated(getID()));
 			}
 		}
+	}
+
+	protected boolean chooseStrategy() {
+		// probabilistic cheating.
+		return rnd.nextDouble() >= pCheat;
 	}
 
 	protected void demand(double d) {
@@ -335,11 +337,6 @@ public class LPGPlayer extends AbstractParticipant {
 		scarcity.addValue(this.g / this.q);
 		// observed need for this agent
 		need.addValue(this.q);
-		// (non-)compliant utility
-		if (compliantRound)
-			compliantUtility.addValue(u);
-		else
-			nonCompliantUtility.addValue(u);
 	}
 
 	private void assessClusterCreation() {
