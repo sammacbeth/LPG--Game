@@ -282,7 +282,7 @@ public class LPGCLI extends Presage2CLI {
 				sim.addParameter("gamma", Double.toString(0.1));
 				sim.addParameter("cCount", Integer.toString(100));
 				sim.addParameter("cPCheat", Double.toString(0.02));
-				sim.addParameter("ncCount", Integer.toString(100));
+				sim.addParameter("ncCount", Integer.toString(50));
 				sim.addParameter("ncPCheat", Double.toString(0.25));
 				sim.addParameter("seed", Integer.toString(seed + i));
 				sim.addParameter("soHack", Boolean.toString(true));

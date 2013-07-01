@@ -104,6 +104,11 @@ public class LPGGameSimulation extends InjectedSimulation {
 	@Parameter(name = "seed")
 	public int seed;
 
+	@Parameter(name = "t1", optional = true)
+	public double t1 = 0.1;
+	@Parameter(name = "t2", optional = true)
+	public double t2 = 0.5;
+
 	@Parameter(name = "soHd", optional = true)
 	public boolean soHd = true;
 	@Parameter(name = "soHack", optional = true)
@@ -224,20 +229,20 @@ public class LPGGameSimulation extends InjectedSimulation {
 			for (int n = 0; n < cCount + ncCount; n++) {
 				createPlayer(format.format(n) + "gen0",
 						0.5 * rnd.nextDouble() + 0.5, cSize, "0", getCheatOn(),
-						clusterArr[n % clusterArr.length]);
+						clusterArr[n % clusterArr.length], false);
 			}
 		} else {
 			for (int n = 0; n < cCount; n++) {
 				createPlayer("c" + n, cPCheat, cSize, "C", getCheatOn(),
-						clusterArr[n % clusterArr.length]);
+						clusterArr[n % clusterArr.length], false);
 			}
 			for (int n = 0; n < ncCount; n++) {
 				createPlayer("nc" + n, ncPCheat, ncSize, "N", getCheatOn(),
-						clusterArr[n % clusterArr.length]);
+						clusterArr[n % clusterArr.length], adaptiveAgents);
 			}
 			for (int n = 0; n < lCount; n++) {
 				createPlayer("l" + n, lPCheat, lSize, "L", getCheatOn(),
-						clusterArr[n % clusterArr.length]);
+						clusterArr[n % clusterArr.length], false);
 			}
 		}
 		for (Player p : players) {
@@ -293,13 +298,14 @@ public class LPGGameSimulation extends InjectedSimulation {
 	}
 
 	protected LPGPlayer createPlayer(String name, double pCheat, double size,
-			String type, Cheat cheatOn, Cluster cluster) {
+			String type, Cheat cheatOn, Cluster cluster, boolean adaptive) {
 		UUID pid = UUID.randomUUID();
-		LPGPlayer ag = adaptiveAgents ? new AdaptivePlayer(pid, name, a, b, c,
+		LPGPlayer ag = adaptive ? new AdaptivePlayer(pid, name, a, b, c,
 				pCheat, alpha, beta, cheatOn, getClusterLeave(),
-				resetSatisfaction, size, rnd.nextLong()) : new LPGPlayer(pid,
-				name, a, b, c, pCheat, alpha, beta, cheatOn, getClusterLeave(),
-				resetSatisfaction, size, rnd.nextLong());
+				resetSatisfaction, size, rnd.nextLong(), t1, t2)
+				: new LPGPlayer(pid, name, a, b, c, pCheat, alpha, beta,
+						cheatOn, getClusterLeave(), resetSatisfaction, size,
+						rnd.nextLong(), t1, t2);
 		ag.permCreateCluster = this.dynamicClusters;
 		scenario.addParticipant(ag);
 		Player p = new Player(pid, name, type, alpha, beta, size);
@@ -422,7 +428,7 @@ public class LPGGameSimulation extends InjectedSimulation {
 			DecimalFormat format = new DecimalFormat("0000");
 			LPGPlayer child = createPlayer(format.format(playerCtr) + "gen"
 					+ genCtr, childPCheat, childSize, "" + genCtr,
-					childCheatOn, cl);
+					childCheatOn, cl, false);
 			child.initialise();
 			logger.info("New child, generation " + genCtr + ", pCheat="
 					+ childPCheat);

@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 import org.apache.log4j.Logger;
 import org.drools.runtime.ObjectFilter;
@@ -36,7 +37,7 @@ public class LPGService extends EnvironmentService {
 	final StatefulKnowledgeSession session;
 	Map<UUID, Player> players = new HashMap<UUID, Player>();
 	Map<UUID, MemberOf> members = new HashMap<UUID, MemberOf>();
-	Set<Cluster> clusters = new HashSet<Cluster>();
+	Set<Cluster> clusters = new CopyOnWriteArraySet<Cluster>();
 
 	RoundType round = RoundType.INIT;
 	int roundNumber = 0;
@@ -133,7 +134,7 @@ public class LPGService extends EnvironmentService {
 
 	public synchronized Set<Cluster> getClusters() {
 		// If we allow for dynamic creation of clusters, we must check which ones exist every time
-		if (this.clusters.size() == 0) {
+		if (this.clusters.isEmpty()) {
 			Collection<Object> clusterSearch = session
 					.getObjects(new ObjectFilter() {
 

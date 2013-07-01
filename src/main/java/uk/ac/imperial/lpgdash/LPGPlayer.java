@@ -1,8 +1,10 @@
 package uk.ac.imperial.lpgdash;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Random;
@@ -60,7 +62,7 @@ public class LPGPlayer extends AbstractParticipant {
 	Cheat cheatOn = Cheat.PROVISION;
 
 	Cluster cluster = null;
-	Map<Cluster, SummaryStatistics> clusterUtilities = new HashMap<Cluster, SummaryStatistics>();
+	Map<Cluster, DescriptiveStatistics> clusterUtilities = new HashMap<Cluster, DescriptiveStatistics>();
 	DescriptiveStatistics rollingUtility = new DescriptiveStatistics(100);
 	SummaryStatistics overallUtility = new SummaryStatistics();
 	DescriptiveStatistics scarcity = new DescriptiveStatistics(100);
@@ -81,7 +83,7 @@ public class LPGPlayer extends AbstractParticipant {
 	public LPGPlayer(UUID id, String name, double a, double b, double c,
 			double pCheat, double alpha, double beta, Cheat cheatOn,
 			ClusterLeaveAlgorithm clLeave, boolean resetSatisfaction,
-			double size, long rndSeed) {
+			double size, long rndSeed, double t1, double t2) {
 		super(id, name);
 		this.pCheat = pCheat;
 		this.alpha = alpha;
@@ -100,10 +102,10 @@ public class LPGPlayer extends AbstractParticipant {
 			this.clusterSelection = new SatisfiedClustering(leaveThreshold);
 			break;
 		case UTILITY:
-			this.clusterSelection = new UtilityClustering();
+			this.clusterSelection = new UtilityClustering(t1, t2);
 			break;
 		case AGE:
-			this.clusterSelection = new LimitLife();
+			this.clusterSelection = new LimitLife(t1, t2);
 		}
 	}
 
@@ -327,7 +329,7 @@ public class LPGPlayer extends AbstractParticipant {
 		}
 
 		if (!clusterUtilities.containsKey(this.cluster)) {
-			SummaryStatistics s = new SummaryStatistics();
+			DescriptiveStatistics s = new DescriptiveStatistics(50);
 			clusterUtilities.put(cluster, s);
 		}
 		clusterUtilities.get(this.cluster).addValue(u);
@@ -449,16 +451,32 @@ public class LPGPlayer extends AbstractParticipant {
 
 	class UtilityClustering implements ClusterSelect {
 		int acclimatisationRounds = 50;
-		Set<Cluster> definitelyLeftClusters = new HashSet<Cluster>();
-		double leaveRate = 0.0; // = utility playing alone
-		double deathRate = leaveRate;
+		double tolerance1;
+		double tolerance2;
+		/**
+		 * Threshold rate at which agent will leave a cluster permanently.
+		 */
+		double t2 = 0.0;
+		/**
+		 * Threshold rate at which agent will look for new clusters.
+		 */
+		double t1 = 0.0;
+		/**
+		 * Threshold rate at which agent will stop playing the game.
+		 */
+		double t3 = 0.0;
+
+		UtilityClustering(double tolerance1, double tolerance2) {
+			super();
+			this.tolerance1 = tolerance1;
+			this.tolerance2 = tolerance2;
+		}
 
 		@Override
 		public void assessClusters() {
 			determineTargetRates();
 			// death
-			if (overallUtility.getN() > 50
-					&& overallUtility.getMean() < deathRate) {
+			if (overallUtility.getN() > 50 && overallUtility.getMean() < t3) {
 				if (cluster != null)
 					leaveCluster();
 				dead = true;
@@ -472,41 +490,93 @@ public class LPGPlayer extends AbstractParticipant {
 
 			// get our current rate of utility generation in this cluster, or
 			// lowest possible value if we're cluster-less.
-			double currentRate = clusterUtilities.containsKey(cluster) ? clusterUtilities
-					.get(cluster).getMean() : deathRate;
+			final double currentRate = cluster != null
+					&& clusterUtilities.containsKey(cluster) ? clusterUtilities
+					.get(cluster).getMean() : t3;
 			if (clusterUtilities.size() > 1) {
-				// find preferred cluster and see if I want to move
-				Cluster preferred = cluster;
-				double maxUtility = currentRate;
-				for (Entry<Cluster, SummaryStatistics> e : clusterUtilities
-						.entrySet()) {
-					if (e.getValue().getMean() > maxUtility + 5) {
-						maxUtility = e.getValue().getMean();
-						preferred = e.getKey();
+				if (currentRate < t2) {
+					// below low threshold, leave cluster.
+					leaveCluster();
+					cluster = null;
+					// look for alternative cluster where ut > t2 or unknown
+					Cluster chosen = chooseClusterFromSubset(new ClusterFilter() {
+						@Override
+						public boolean isSubsetMember(Cluster c) {
+							DescriptiveStatistics s = clusterUtilities.get(c);
+							return s != null
+									&& (s.getN() < 2 || s.getMean() > t2);
+						}
+					});
+					if (chosen != null) {
+						joinCluster(chosen);
+						cluster = chosen;
+						acclimatisationRounds = 50;
+					}
+				} else if (currentRate < t1) {
+					// below high threshold, check for possible better cluster
+					// (ut > t1 or unknown)
+					Cluster chosen = chooseClusterFromSubset(new ClusterFilter() {
+						@Override
+						public boolean isSubsetMember(Cluster c) {
+							DescriptiveStatistics s = clusterUtilities.get(c);
+							return s != null
+									&& (s.getN() < 2 || s.getMean() > t1);
+						}
+					});
+					if (chosen != null) {
+						leaveCluster();
+						joinCluster(chosen);
+						cluster = chosen;
+						acclimatisationRounds = 50;
+					}
+				} else {
+					// above high threshold. Look only for preferred clusters
+					Cluster chosen = chooseClusterFromSubset(new ClusterFilter() {
+						@Override
+						public boolean isSubsetMember(Cluster c) {
+							DescriptiveStatistics s = clusterUtilities.get(c);
+							return s != null && s.getMean() > currentRate;
+						}
+					});
+					if (chosen != null) {
+						leaveCluster();
+						joinCluster(chosen);
+						cluster = chosen;
+						acclimatisationRounds = 50;
 					}
 				}
-
-				if (preferred == null) {
-					return;
-				}
-				if (!preferred.equals(cluster) && maxUtility > currentRate) {
-					leaveCluster();
-					joinCluster(preferred);
-					cluster = preferred;
-					acclimatisationRounds = 50;
-				}
-			} else if (cluster != null && currentRate < leaveRate) {
+			} else if (cluster != null && currentRate < t2) {
 				leaveCluster();
 				acclimatisationRounds = 50;
 			}
 		}
 
 		void determineTargetRates() {
-			// calculate expected utility rate
-			deathRate = ut.estimateFullDefectUtility(scarcity.getMean());
-			leaveRate = deathRate
-					+ ut.estimateFullComplyUtility(scarcity.getMean());
-			leaveRate /= 2;
+			// calculate expected utility rates
+			double bestCase = ut.estimateFullComplyUtility(scarcity.getMean());
+			double worstCase = ut.estimateFullDefectUtility(scarcity.getMean());
+
+			t3 = worstCase;
+			// alpha and beta are acceptable inefficiency proportion for t1 and
+			// t2 respectively.
+			t2 = bestCase - tolerance2 * (bestCase - worstCase);
+			t1 = bestCase - tolerance1 * (bestCase - worstCase);
+		}
+
+		private Cluster chooseClusterFromSubset(ClusterFilter f) {
+			List<Cluster> candidateClusters = new ArrayList<Cluster>();
+			for (Entry<Cluster, DescriptiveStatistics> e : clusterUtilities
+					.entrySet()) {
+				if (f.isSubsetMember(e.getKey()))
+					candidateClusters.add(e.getKey());
+			}
+			// if we found one, join one randomly. Otherwise we wait for
+			// something new.
+			if (candidateClusters.size() > 0)
+				return candidateClusters.get(rnd.nextInt(candidateClusters
+						.size()));
+			else
+				return null;
 		}
 
 		private void checkNewClusters() {
@@ -516,17 +586,16 @@ public class LPGPlayer extends AbstractParticipant {
 			// logger.info("Avail cluster: " + availableClusters);
 			for (Cluster c : availableClusters) {
 				if (!clusterUtilities.containsKey(c)) {
-					SummaryStatistics s = new SummaryStatistics();
-					s.addValue(0);
+					DescriptiveStatistics s = new DescriptiveStatistics(50);
 					clusterUtilities.put(c, s);
 				}
 			}
 			// Remove non existing clusters -- use iterator to avoid
 			// concurrentModificationException
-			Iterator<Entry<Cluster, SummaryStatistics>> it = clusterUtilities
+			Iterator<Entry<Cluster, DescriptiveStatistics>> it = clusterUtilities
 					.entrySet().iterator();
 			while (it.hasNext()) {
-				Entry<Cluster, SummaryStatistics> entry = it.next();
+				Entry<Cluster, DescriptiveStatistics> entry = it.next();
 				if (!availableClusters.contains(entry.getKey())) {
 					it.remove();
 				}
@@ -536,6 +605,10 @@ public class LPGPlayer extends AbstractParticipant {
 	}
 
 	class LimitLife extends UtilityClustering {
+		LimitLife(double tolerance1, double tolerance2) {
+			super(tolerance1, tolerance2);
+		}
+
 		int age = 0;
 		int baselifespan = 200;
 
@@ -551,7 +624,7 @@ public class LPGPlayer extends AbstractParticipant {
 			if (cluster != null && --acclimatisationRounds > 0)
 				return;
 
-			int expected = (int) (baselifespan + (overallUtility.getMean() - leaveRate)
+			int expected = (int) (baselifespan + (overallUtility.getMean() - t2)
 					* baselifespan);
 			if (age > expected) {
 				// death of old age
@@ -592,5 +665,9 @@ public class LPGPlayer extends AbstractParticipant {
 			return c * scarcity;
 		}
 
+	}
+
+	interface ClusterFilter {
+		boolean isSubsetMember(Cluster c);
 	}
 }

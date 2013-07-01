@@ -19,9 +19,9 @@ public class AdaptivePlayer extends LPGPlayer {
 	public AdaptivePlayer(UUID id, String name, double a, double b, double c,
 			double pCheat, double alpha, double beta, Cheat cheatOn,
 			ClusterLeaveAlgorithm clLeave, boolean resetSatisfaction,
-			double size, long rndSeed) {
+			double size, long rndSeed, double t1, double t2) {
 		super(id, name, a, b, c, pCheat, alpha, beta, cheatOn, clLeave,
-				resetSatisfaction, size, rndSeed);
+				resetSatisfaction, size, rndSeed, t1, t2);
 		// generate strategy.
 		this.strategy = new boolean[strategyLength];
 		for (int i = 0; i < strategyLength; i++) {
