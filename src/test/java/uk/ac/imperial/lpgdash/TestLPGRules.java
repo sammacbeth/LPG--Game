@@ -46,6 +46,7 @@ public class TestLPGRules {
 	public void setUp() throws Exception {
 		injector = Guice.createInjector(new RuleModule()
 				.addClasspathDrlFile("LPGDash.drl")
+				.addClasspathDrlFile("Institution.drl")
 				.addClasspathDrlFile("LegitimateClaimsAllocation.drl")
 				.addClasspathDrlFile("RandomAllocation.drl")
 				.addClasspathDrlFile("RationAllocation.drl"));
@@ -111,7 +112,8 @@ public class TestLPGRules {
 
 		for (int i = 0; i < 5; i++) {
 			for (Player p : game.players) {
-				Provision provision = new Provision(game.currentRound, p, p.getG());
+				Provision provision = new Provision(game.currentRound, p,
+						p.getG());
 				Demand demand = new Demand(game.currentRound, p, p.getQ());
 				session.insert(provision);
 				session.insert(demand);
@@ -156,7 +158,8 @@ public class TestLPGRules {
 
 		for (int i = 0; i < 5; i++) {
 			for (Player p : game.players) {
-				Provision provision = new Provision(game.currentRound, p, p.getG());
+				Provision provision = new Provision(game.currentRound, p,
+						p.getG());
 				Demand demand = new Demand(game.currentRound, p, p.getQ());
 				session.insert(provision);
 				session.insert(demand);
